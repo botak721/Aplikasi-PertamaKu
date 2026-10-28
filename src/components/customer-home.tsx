@@ -114,7 +114,7 @@ function MenuView({
     });
   }
 
-  async function pesan() {
+    async function pesan() {
     if (jumlahItem === 0) {
       Alert.alert('Keranjang kosong', 'Pilih menu dulu ya.');
       return;
@@ -124,37 +124,17 @@ function MenuView({
       return;
     }
     setSending(true);
-    const { data: order, error } = await supabase
-      .from('orders')
-      .insert({
-        customer_id: userId,
-        merchant_id: merchant.id,
-        merchant_nama: merchant.nama,
-        alamat: alamat.trim(),
-        total,
-      })
-      .select('id')
-      .single();
-
-    if (error || !order) {
-      setSending(false);
-      Alert.alert('Gagal membuat pesanan', error?.message ?? 'Coba lagi.');
-      return;
-    }
-
-    const rows = items
-      .filter((it) => cart[it.id])
-      .map((it) => ({
-        order_id: order.id,
-        nama: it.nama,
-        harga: it.harga,
-        jumlah: cart[it.id],
-      }));
-    const { error: itemError } = await supabase.from('order_items').insert(rows);
+    const { error } = await supabase.rpc('buat_pesanan', {
+      p_merchant_id: merchant.id,
+      p_alamat: alamat.trim(),
+      p_items: items
+        .filter((it) => cart[it.id])
+        .map((it) => ({ menu_id: it.id, jumlah: cart[it.id] })),
+    });
     setSending(false);
 
-    if (itemError) {
-      Alert.alert('Gagal menyimpan item', itemError.message);
+    if (error) {
+      Alert.alert('Gagal membuat pesanan', error.message);
       return;
     }
     Alert.alert('Pesanan terkirim!', 'Penjual akan segera memprosesnya.');
