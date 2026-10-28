@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { MerchantMenu } from "@/components/merchant-menu";
+import { CustomerHome } from '@/components/customer-home';
 
 type Role = "customer" | "driver" | "merchant";
 type Profile = { nama: string | null; role: Role };
@@ -222,11 +223,10 @@ export default function HomeScreen() {
           <ActivityIndicator size="large" color="#00AA13" />
         </View>
       ) : session ? (
-        profile?.role === "merchant" ? (
-          <MerchantMenu
-            userId={session.user.id}
-            nama={profile.nama ?? "Penjual"}
-          />
+                profile?.role === 'merchant' ? (
+          <MerchantMenu userId={session.user.id} nama={profile.nama ?? 'Penjual'} />
+        ) : profile?.role === 'customer' ? (
+          <CustomerHome userId={session.user.id} nama={profile.nama ?? 'Customer'} />
         ) : (
           <RoleHome profile={profile} />
         )
