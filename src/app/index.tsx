@@ -16,6 +16,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { MerchantHome } from "@/components/merchant-home";
 import { CustomerHome } from "@/components/customer-home";
+import { DriverHome } from "@/components/driver-home";
 
 type Role = "customer" | "driver" | "merchant";
 type Profile = { nama: string | null; role: Role };
@@ -232,6 +233,11 @@ export default function HomeScreen() {
           <CustomerHome
             userId={session.user.id}
             nama={profile.nama ?? "Customer"}
+          />
+        ) : profile?.role === "driver" ? (
+          <DriverHome
+            userId={session.user.id}
+            nama={profile.nama ?? "Driver"}
           />
         ) : (
           <RoleHome profile={profile} />
