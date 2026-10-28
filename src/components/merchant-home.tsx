@@ -2,27 +2,33 @@ import { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { MerchantMenu } from '@/components/merchant-menu';
 import { MerchantOrders } from '@/components/merchant-orders';
+import { MerchantLocation } from '@/components/merchant-location';
+
+type Tab = 'pesanan' | 'menu' | 'lokasi';
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'pesanan', label: 'Pesanan' },
+  { key: 'menu', label: 'Menu' },
+  { key: 'lokasi', label: 'Lokasi' },
+];
 
 export function MerchantHome({ userId, nama }: { userId: string; nama: string }) {
-  const [tab, setTab] = useState<'pesanan' | 'menu'>('pesanan');
+  const [tab, setTab] = useState<Tab>('pesanan');
 
   return (
     <View style={styles.flex}>
       <View style={styles.tabs}>
-        <TouchableOpacity
-          style={[styles.tab, tab === 'pesanan' && styles.tabActive]}
-          onPress={() => setTab('pesanan')}>
-          <Text style={[styles.tabText, tab === 'pesanan' && styles.tabTextActive]}>
-            Pesanan Masuk
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, tab === 'menu' && styles.tabActive]}
-          onPress={() => setTab('menu')}>
-          <Text style={[styles.tabText, tab === 'menu' && styles.tabTextActive]}>Kelola Menu</Text>
-        </TouchableOpacity>
+        {TABS.map((t) => (
+          <TouchableOpacity
+            key={t.key}
+            style={[styles.tab, tab === t.key && styles.tabActive]}
+            onPress={() => setTab(t.key)}>
+            <Text style={[styles.tabText, tab === t.key && styles.tabTextActive]}>{t.label}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
-      {tab === 'pesanan' ? <MerchantOrders /> : <MerchantMenu userId={userId} nama={nama} />}
+      {tab === 'pesanan' && <MerchantOrders />}
+      {tab === 'menu' && <MerchantMenu userId={userId} nama={nama} />}
+      {tab === 'lokasi' && <MerchantLocation userId={userId} />}
     </View>
   );
 }
