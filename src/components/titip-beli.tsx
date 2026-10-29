@@ -129,7 +129,7 @@ export function TitipBeli({ userId }: { userId: string }) {
       <TextInput
         style={[styles.input, styles.inputTall]}
         placeholder="Barang yang dititip (contoh: materai 10000 x2, pulpen hitam)"
-        placeholderTextColor="#888"
+        placeholderTextColor="#5B6785"
         multiline
         value={barang}
         onChangeText={setBarang}
@@ -137,7 +137,7 @@ export function TitipBeli({ userId }: { userId: string }) {
       <TextInput
         style={styles.input}
         placeholder="Perkiraan harga barang (contoh: 25000)"
-        placeholderTextColor="#888"
+        placeholderTextColor="#5B6785"
         keyboardType="numeric"
         value={estimasi}
         onChangeText={setEstimasi}
@@ -145,7 +145,7 @@ export function TitipBeli({ userId }: { userId: string }) {
       <TextInput
         style={styles.input}
         placeholder="Upah untuk yang membantu (contoh: 5000)"
-        placeholderTextColor="#888"
+        placeholderTextColor="#5B6785"
         keyboardType="numeric"
         value={upah}
         onChangeText={setUpah}
@@ -153,7 +153,7 @@ export function TitipBeli({ userId }: { userId: string }) {
       <TextInput
         style={styles.input}
         placeholder="Antar ke gedung / ruang"
-        placeholderTextColor="#888"
+        placeholderTextColor="#5B6785"
         value={lokasi}
         onChangeText={setLokasi}
       />
@@ -277,55 +277,55 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     padding: 10,
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#C9D6F5',
     alignItems: 'center',
   },
-  tabActive: { backgroundColor: '#00AA13', borderColor: '#00AA13' },
-  tabText: { color: '#333', fontWeight: '600' },
+  tabActive: { backgroundColor: '#2547D0', borderColor: '#2547D0' },
+  tabText: { color: '#0E1B5C', fontFamily: 'PlusJakartaSans_600SemiBold' },
   tabTextActive: { color: '#fff' },
   form: { gap: 8, marginBottom: 8 },
-  formTitle: { fontSize: 18, fontWeight: '700', color: '#111', marginTop: 4 },
+  formTitle: { fontSize: 18, fontFamily: 'PlusJakartaSans_700Bold', color: '#0E1B5C', marginTop: 4 },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 10,
+    borderColor: '#C9D6F5',
+    borderRadius: 14,
     padding: 12,
     fontSize: 16,
-    color: '#111',
-    backgroundColor: '#fafafa',
+    color: '#0E1B5C',
+    backgroundColor: '#FFFFFF',
   },
   inputTall: { minHeight: 70, textAlignVertical: 'top' },
-  notice: { fontSize: 12, color: '#666' },
-  empty: { textAlign: 'center', color: '#777', marginTop: 24 },
+  notice: { fontSize: 12, color: '#5B6785' },
+  empty: { textAlign: 'center', color: '#5B6785', marginTop: 24 },
   card: {
     padding: 14,
     borderWidth: 1,
-    borderColor: '#e5e5e5',
-    borderRadius: 10,
+    borderColor: '#DDE5F7',
+    borderRadius: 14,
     marginBottom: 10,
     backgroundColor: '#fff',
   },
-  status: { fontSize: 14, fontWeight: '700', color: '#c60', marginBottom: 6 },
-  barang: { fontSize: 16, fontWeight: '600', color: '#111', marginBottom: 4 },
-  meta: { fontSize: 13, color: '#666', marginTop: 2 },
-  upah: { fontSize: 14, fontWeight: '700', color: '#00AA13', marginTop: 2 },
+  status: { fontSize: 14, fontFamily: 'PlusJakartaSans_700Bold', color: '#c60', marginBottom: 6 },
+  barang: { fontSize: 16, fontFamily: 'PlusJakartaSans_600SemiBold', color: '#0E1B5C', marginBottom: 4 },
+  meta: { fontSize: 13, color: '#5B6785', marginTop: 2 },
+  upah: { fontSize: 14, fontFamily: 'PlusJakartaSans_700Bold', color: '#2547D0', marginTop: 2 },
   primaryBtn: {
-    backgroundColor: '#00AA13',
+    backgroundColor: '#2547D0',
     padding: 12,
-    borderRadius: 10,
+    borderRadius: 14,
     alignItems: 'center',
     marginTop: 10,
   },
-  primaryText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  primaryText: { color: '#fff', fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15 },
   dangerBtn: {
     borderWidth: 1,
-    borderColor: '#d00',
+    borderColor: '#D92D20',
     padding: 10,
-    borderRadius: 10,
+    borderRadius: 14,
     alignItems: 'center',
     marginTop: 10,
   },
-  dangerText: { color: '#d00', fontWeight: '700' },
+  dangerText: { color: '#D92D20', fontFamily: 'PlusJakartaSans_700Bold' },
 });

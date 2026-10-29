@@ -39,12 +39,12 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     padding: 10,
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#C9D6F5',
     alignItems: 'center',
   },
-  tabActive: { backgroundColor: '#00AA13', borderColor: '#00AA13' },
-  tabText: { color: '#333', fontWeight: '600' },
+  tabActive: { backgroundColor: '#2547D0', borderColor: '#2547D0' },
+  tabText: { color: '#0E1B5C', fontFamily: 'PlusJakartaSans_600SemiBold' },
   tabTextActive: { color: '#fff' },
 });

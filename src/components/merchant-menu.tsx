@@ -100,14 +100,14 @@ export function MerchantMenu({ userId, nama }: { userId: string; nama: string })
         <TextInput
           style={styles.input}
           placeholder="Nama menu (contoh: Nasi Goreng)"
-          placeholderTextColor="#888"
+          placeholderTextColor="#5B6785"
           value={namaMenu}
           onChangeText={setNamaMenu}
         />
         <TextInput
           style={styles.input}
           placeholder="Harga (contoh: 15000)"
-          placeholderTextColor="#888"
+          placeholderTextColor="#5B6785"
           keyboardType="numeric"
           value={harga}
           onChangeText={setHarga}
@@ -122,7 +122,7 @@ export function MerchantMenu({ userId, nama }: { userId: string; nama: string })
       </View>
 
       {loading ? (
-        <ActivityIndicator style={{ marginTop: 24 }} color="#00AA13" />
+        <ActivityIndicator style={{ marginTop: 24 }} color="#2547D0" />
       ) : (
         <FlatList
           data={items}
@@ -142,7 +142,7 @@ export function MerchantMenu({ userId, nama }: { userId: string; nama: string })
                 <Switch
                   value={item.tersedia}
                   onValueChange={(v) => toggleItem(item, v)}
-                  trackColor={{ true: '#00AA13' }}
+                  trackColor={{ true: '#2547D0' }}
                 />
               </View>
             </View>
@@ -157,35 +157,35 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, padding: 16 },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  title: { fontSize: 22, fontWeight: '700', color: '#111' },
-  subtitle: { fontSize: 14, color: '#555' },
-  logout: { color: '#d00', fontWeight: '600' },
+  title: { fontSize: 22, fontFamily: 'PlusJakartaSans_700Bold', color: '#0E1B5C' },
+  subtitle: { fontSize: 14, color: '#5B6785' },
+  logout: { color: '#D92D20', fontFamily: 'PlusJakartaSans_600SemiBold' },
   form: { gap: 8, marginBottom: 12 },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 10,
+    borderColor: '#C9D6F5',
+    borderRadius: 14,
     padding: 12,
     fontSize: 16,
-    color: '#111',
-    backgroundColor: '#fafafa',
+    color: '#0E1B5C',
+    backgroundColor: '#FFFFFF',
   },
-  addBtn: { backgroundColor: '#00AA13', padding: 14, borderRadius: 10, alignItems: 'center' },
-  addText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  empty: { textAlign: 'center', color: '#777', marginTop: 24 },
+  addBtn: { backgroundColor: '#2547D0', padding: 14, borderRadius: 14, alignItems: 'center' },
+  addText: { color: '#fff', fontSize: 16, fontFamily: 'PlusJakartaSans_700Bold' },
+  empty: { textAlign: 'center', color: '#5B6785', marginTop: 24 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
     borderWidth: 1,
-    borderColor: '#e5e5e5',
-    borderRadius: 10,
+    borderColor: '#DDE5F7',
+    borderRadius: 14,
     marginBottom: 8,
     backgroundColor: '#fff',
   },
-  itemName: { fontSize: 16, fontWeight: '600', color: '#111' },
-  itemPrice: { fontSize: 14, color: '#00AA13', marginTop: 2 },
-  delete: { color: '#d00', marginTop: 6, fontSize: 13 },
+  itemName: { fontSize: 16, fontFamily: 'PlusJakartaSans_600SemiBold', color: '#0E1B5C' },
+  itemPrice: { fontSize: 14, color: '#2547D0', marginTop: 2 },
+  delete: { color: '#D92D20', marginTop: 6, fontSize: 13 },
   switchBox: { alignItems: 'center' },
-  switchLabel: { fontSize: 12, color: '#555' },
+  switchLabel: { fontSize: 12, color: '#5B6785' },
 });

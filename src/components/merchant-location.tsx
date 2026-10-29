@@ -61,7 +61,7 @@ export function MerchantLocation({ userId }: { userId: string }) {
     Alert.alert('Tersimpan', 'Lokasi tokomu sudah diperbarui.');
   }
 
-  if (loading) return <ActivityIndicator style={{ marginTop: 24 }} color="#00AA13" />;
+  if (loading) return <ActivityIndicator style={{ marginTop: 24 }} color="#2547D0" />;
 
   return (
     <View style={styles.container}>
@@ -73,14 +73,14 @@ export function MerchantLocation({ userId }: { userId: string }) {
       <TextInput
         style={styles.input}
         placeholder="Alamat toko (contoh: Jl. Margonda Raya No. 10)"
-        placeholderTextColor="#888"
+        placeholderTextColor="#5B6785"
         value={alamat}
         onChangeText={setAlamat}
       />
 
       <TouchableOpacity style={styles.secondaryBtn} onPress={pakaiLokasi} disabled={locating}>
         {locating ? (
-          <ActivityIndicator color="#00AA13" />
+          <ActivityIndicator color="#2547D0" />
         ) : (
           <Text style={styles.secondaryText}>Gunakan lokasi saya sekarang</Text>
         )}
@@ -105,26 +105,26 @@ export function MerchantLocation({ userId }: { userId: string }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, gap: 12 },
-  title: { fontSize: 22, fontWeight: '700', color: '#111' },
-  subtitle: { fontSize: 14, color: '#555' },
+  title: { fontSize: 22, fontFamily: 'PlusJakartaSans_700Bold', color: '#0E1B5C' },
+  subtitle: { fontSize: 14, color: '#5B6785' },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 10,
+    borderColor: '#C9D6F5',
+    borderRadius: 14,
     padding: 12,
     fontSize: 16,
-    color: '#111',
-    backgroundColor: '#fafafa',
+    color: '#0E1B5C',
+    backgroundColor: '#FFFFFF',
   },
-  coords: { fontSize: 14, color: '#333' },
-  primaryBtn: { backgroundColor: '#00AA13', padding: 14, borderRadius: 10, alignItems: 'center' },
-  primaryText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  coords: { fontSize: 14, color: '#0E1B5C' },
+  primaryBtn: { backgroundColor: '#2547D0', padding: 14, borderRadius: 14, alignItems: 'center' },
+  primaryText: { color: '#fff', fontSize: 16, fontFamily: 'PlusJakartaSans_700Bold' },
   secondaryBtn: {
     borderWidth: 1,
-    borderColor: '#00AA13',
+    borderColor: '#2547D0',
     padding: 12,
-    borderRadius: 10,
+    borderRadius: 14,
     alignItems: 'center',
   },
-  secondaryText: { color: '#00AA13', fontWeight: '700' },
+  secondaryText: { color: '#2547D0', fontFamily: 'PlusJakartaSans_700Bold' },
 });

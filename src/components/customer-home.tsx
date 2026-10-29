@@ -122,7 +122,7 @@ function MerchantList({ onPick }: { onPick: (m: Merchant) => void }) {
   }, []);
 
   if (loading)
-    return <ActivityIndicator style={{ marginTop: 24 }} color="#00AA13" />;
+    return <ActivityIndicator style={{ marginTop: 24 }} color="#2547D0" />;
 
   return (
     <FlatList
@@ -243,7 +243,7 @@ function MenuView({
       <Text style={styles.title}>{merchant.nama ?? "Penjual"}</Text>
 
       {loading ? (
-        <ActivityIndicator style={{ marginTop: 24 }} color="#00AA13" />
+        <ActivityIndicator style={{ marginTop: 24 }} color="#2547D0" />
       ) : (
         <FlatList
           style={styles.flex}
@@ -285,7 +285,7 @@ function MenuView({
           disabled={locating}
         >
           {locating ? (
-            <ActivityIndicator color="#00AA13" />
+            <ActivityIndicator color="#2547D0" />
           ) : (
             <Text style={styles.secondaryText}>
               {coords
@@ -297,7 +297,7 @@ function MenuView({
         <TextInput
           style={styles.input}
           placeholder="Gedung / ruang (contoh: Gedung B, Ruang 204)"
-          placeholderTextColor="#888"
+          placeholderTextColor="#5B6785"
           value={alamat}
           onChangeText={setAlamat}
         />
@@ -468,42 +468,42 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, padding: 16 },
   header: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
-  title: { fontSize: 22, fontWeight: "700", color: "#111" },
-  logout: { color: "#d00", fontWeight: "600" },
-  back: { color: "#00AA13", fontSize: 16, marginBottom: 8 },
+  title: { fontSize: 22, fontFamily: 'PlusJakartaSans_700Bold', color: "#0E1B5C" },
+  logout: { color: "#D92D20", fontFamily: 'PlusJakartaSans_600SemiBold' },
+  back: { color: "#2547D0", fontSize: 16, marginBottom: 8 },
   tabs: { flexDirection: "row", gap: 8, marginBottom: 12 },
   tab: {
     flex: 1,
     padding: 10,
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: "#C9D6F5",
     alignItems: "center",
   },
-  tabActive: { backgroundColor: "#00AA13", borderColor: "#00AA13" },
-  tabText: { color: "#333", fontWeight: "600" },
+  tabActive: { backgroundColor: "#2547D0", borderColor: "#2547D0" },
+  tabText: { color: "#0E1B5C", fontFamily: 'PlusJakartaSans_600SemiBold' },
   tabTextActive: { color: "#fff" },
-  empty: { textAlign: "center", color: "#777", marginTop: 24 },
+  empty: { textAlign: "center", color: "#5B6785", marginTop: 24 },
   card: {
     padding: 14,
     borderWidth: 1,
-    borderColor: "#e5e5e5",
-    borderRadius: 10,
+    borderColor: "#DDE5F7",
+    borderRadius: 14,
     marginBottom: 8,
     backgroundColor: "#fff",
   },
-  cardTitle: { fontSize: 16, fontWeight: "600", color: "#111" },
+  cardTitle: { fontSize: 16, fontFamily: 'PlusJakartaSans_600SemiBold', color: "#0E1B5C" },
   cardOff: { opacity: 0.55 },
-  cardSub: { fontSize: 13, color: "#666", marginTop: 2 },
-  price: { fontSize: 14, color: "#00AA13", marginTop: 2 },
-  status: { fontSize: 14, fontWeight: "600", color: "#c60", marginTop: 4 },
+  cardSub: { fontSize: 13, color: "#5B6785", marginTop: 2 },
+  price: { fontSize: 14, color: "#2547D0", marginTop: 2 },
+  status: { fontSize: 14, fontFamily: 'PlusJakartaSans_600SemiBold', color: "#c60", marginTop: 4 },
   row: {
     flexDirection: "row",
     alignItems: "center",
     padding: 12,
     borderWidth: 1,
-    borderColor: "#e5e5e5",
-    borderRadius: 10,
+    borderColor: "#DDE5F7",
+    borderRadius: 14,
     marginBottom: 8,
     backgroundColor: "#fff",
   },
@@ -512,46 +512,46 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#00AA13",
+    backgroundColor: "#2547D0",
     alignItems: "center",
     justifyContent: "center",
   },
   qtyBtnText: {
     color: "#fff",
     fontSize: 20,
-    fontWeight: "700",
+    fontFamily: 'PlusJakartaSans_700Bold',
     lineHeight: 22,
   },
   qty: {
     fontSize: 16,
-    fontWeight: "600",
+    fontFamily: 'PlusJakartaSans_600SemiBold',
     minWidth: 20,
     textAlign: "center",
-    color: "#111",
+    color: "#0E1B5C",
   },
   checkout: { gap: 8, paddingTop: 8 },
   input: {
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 10,
+    borderColor: "#C9D6F5",
+    borderRadius: 14,
     padding: 12,
     fontSize: 16,
-    color: "#111",
-    backgroundColor: "#fafafa",
+    color: "#0E1B5C",
+    backgroundColor: "#FFFFFF",
   },
   primaryBtn: {
-    backgroundColor: "#00AA13",
+    backgroundColor: "#2547D0",
     padding: 14,
-    borderRadius: 10,
+    borderRadius: 14,
     alignItems: "center",
   },
-  primaryText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  primaryText: { color: "#fff", fontSize: 16, fontFamily: 'PlusJakartaSans_700Bold' },
   secondaryBtn: {
     borderWidth: 1,
-    borderColor: "#00AA13",
+    borderColor: "#2547D0",
     padding: 12,
-    borderRadius: 10,
+    borderRadius: 14,
     alignItems: "center",
   },
-  secondaryText: { color: "#00AA13", fontWeight: "700" },
+  secondaryText: { color: "#2547D0", fontFamily: 'PlusJakartaSans_700Bold' },
 });
