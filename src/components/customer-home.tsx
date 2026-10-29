@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { supabase } from "@/lib/supabase";
 import { getCoords } from "@/lib/geo";
+import { TrackOrder } from "@/components/track-order";
 
 type Merchant = { id: string; nama: string | null };
 type MenuItem = { id: string; nama: string; harga: number };
@@ -20,6 +21,10 @@ type Order = {
   total: number;
   status: string;
   created_at: string;
+  dest_lat: number | null;
+  dest_lng: number | null;
+  merchant_lat: number | null;
+  merchant_lng: number | null;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -257,7 +262,9 @@ function OrdersView({ userId }: { userId: string }) {
     setRefreshing(true);
     const { data, error } = await supabase
       .from("orders")
-      .select("id, merchant_nama, total, status, created_at")
+      .select(
+        "id, merchant_nama, total, status, created_at, dest_lat, dest_lng, merchant_lat, merchant_lng",
+      )
       .eq("customer_id", userId)
       .order("created_at", { ascending: false });
     if (error) Alert.alert("Gagal memuat pesanan", error.message);
@@ -288,6 +295,21 @@ function OrdersView({ userId }: { userId: string }) {
           <Text style={styles.cardSub}>
             {new Date(item.created_at).toLocaleString("id-ID")}
           </Text>
+          {item.status === "diantar" && (
+            <TrackOrder
+              orderId={item.id}
+              dest={
+                item.dest_lat != null && item.dest_lng != null
+                  ? { lat: item.dest_lat, lng: item.dest_lng }
+                  : null
+              }
+              merchant={
+                item.merchant_lat != null && item.merchant_lng != null
+                  ? { lat: item.merchant_lat, lng: item.merchant_lng }
+                  : null
+              }
+            />
+          )}
         </View>
       )}
     />

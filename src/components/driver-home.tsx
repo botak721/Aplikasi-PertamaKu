@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { supabase } from "@/lib/supabase";
 import { jarakKm, openRoute } from "@/lib/geo";
+import { LocationSharer } from "@/components/location-sharer";
 
 type Item = { nama: string; jumlah: number };
 type Order = {
@@ -36,6 +37,22 @@ export function DriverHome({ userId, nama }: { userId: string; nama: string }) {
   const [tab, setTab] = useState<"tersedia" | "saya">("tersedia");
   const [orders, setOrders] = useState<Order[]>([]);
   const [refreshing, setRefreshing] = useState(true);
+  const [aktifIds, setAktifIds] = useState<string[]>([]);
+
+  const loadAktif = useCallback(async () => {
+    const { data } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("driver_id", userId)
+      .eq("status", "diantar");
+    setAktifIds((data ?? []).map((o) => o.id as string));
+  }, [userId]);
+
+  useEffect(() => {
+    loadAktif();
+    const timer = setInterval(loadAktif, 10000);
+    return () => clearInterval(timer);
+  }, [loadAktif]);
 
   const load = useCallback(
     async (silent = false) => {
@@ -84,6 +101,7 @@ export function DriverHome({ userId, nama }: { userId: string; nama: string }) {
     }
     Alert.alert("Berhasil", 'Pesanan ada di tab "Pengantaran Saya".');
     setTab("saya");
+    loadAktif();
   }
 
   async function selesai(id: string) {
@@ -93,7 +111,10 @@ export function DriverHome({ userId, nama }: { userId: string; nama: string }) {
       .eq("id", id)
       .eq("driver_id", userId);
     if (error) Alert.alert("Gagal menyelesaikan", error.message);
-    else load(true);
+    else {
+      load(true);
+      loadAktif();
+    }
   }
 
   return (
@@ -107,6 +128,13 @@ export function DriverHome({ userId, nama }: { userId: string; nama: string }) {
           <Text style={styles.logout}>Keluar</Text>
         </TouchableOpacity>
       </View>
+
+      <LocationSharer orderIds={aktifIds} userId={userId} />
+      {aktifIds.length > 0 && (
+        <Text style={styles.sharing}>
+          Lokasimu sedang dibagikan ke customer. Biarkan aplikasi tetap terbuka.
+        </Text>
+      )}
 
       <View style={styles.tabs}>
         <TouchableOpacity
@@ -265,6 +293,7 @@ const styles = StyleSheet.create({
   },
   btnText: { color: "#fff", fontWeight: "700" },
   done: { color: "#00AA13", fontWeight: "700", marginTop: 10 },
+  sharing: { fontSize: 13, color: "#2563eb", marginBottom: 8 },
   routeRow: { flexDirection: "row", gap: 8, marginTop: 10 },
   routeBtn: {
     flex: 1,
