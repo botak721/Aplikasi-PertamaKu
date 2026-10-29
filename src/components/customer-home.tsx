@@ -1,109 +1,100 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-} from "react-native";
-import { supabase } from "@/lib/supabase";
-import { getCoords } from "@/lib/geo";
-import { TrackOrder } from "@/components/track-order";
-import { TitipBeli } from "@/components/titip-beli";
+} from 'react-native';
+import { supabase } from '@/lib/supabase';
+import { getCoords } from '@/lib/geo';
+import { notify } from '@/lib/notify';
+import { TrackOrder } from '@/components/track-order';
+import { TitipBeli } from '@/components/titip-beli';
+import { C, F } from '@/constants/kampusgo';
 
 type Merchant = { id: string; nama: string | null };
 type MenuItem = { id: string; nama: string; harga: number };
-type Order = {
-  id: string;
-  merchant_nama: string | null;
-  total: number;
-  status: string;
-  created_at: string;
-  dest_lat: number | null;
-  dest_lng: number | null;
-  merchant_lat: number | null;
-  merchant_lng: number | null;
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  baru: "Menunggu penjual",
-  diproses: "Sedang disiapkan",
-  siap: "Siap diantar",
-  diantar: "Sedang diantar",
-  selesai: "Selesai",
-  dibatalkan: "Dibatalkan",
-};
+type Tab = 'beranda' | 'pesanan' | 'chat' | 'akun';
+type Filter = 'aktif' | 'selesai' | 'dibatalkan';
+type Pt = { lat: number; lng: number };
 
 function rupiah(n: number) {
-  return "Rp " + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return 'Rp ' + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
-const LAYANAN = [
-  {
-    key: "kantin",
-    judul: "Titip Kantin",
-    desc: "Pesan makanan dari kantin atau warung, diantar ke gedung atau kelas",
-    aktif: true,
-  },
-  {
-    key: "print",
-    judul: "Fotokopi & Print",
-    desc: "Upload file, ambil di tempat atau diantar",
-    aktif: false,
-  },
-  {
-    key: "ojek",
-    judul: "Ojek Kampus",
-    desc: "Antar jarak pendek di sekitar kampus",
-    aktif: false,
-  },
-  {
-    key: "titip_beli",
-    judul: "Titip Beli",
-    desc: "Minta tolong teman beli alat tulis, materai, buku",
-    aktif: true,
-  },
-  {
-    key: "belajar",
-    judul: "Teman Belajar",
-    desc: "Cari kelompok belajar",
-    aktif: false,
-  },
-  {
-    key: "info",
-    judul: "Info Kampus",
-    desc: "Jadwal, ruang kosong, dan kegiatan",
-    aktif: false,
-  },
-];
+function tgl(iso: string) {
+  return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+}
 
-function ServiceGrid({ onPick }: { onPick: (key: string) => void }) {
+function Header({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <FlatList
-      data={LAYANAN}
-      keyExtractor={(l) => l.key}
-      renderItem={({ item }) => (
-        <TouchableOpacity
-          style={[styles.card, !item.aktif && styles.cardOff]}
-          onPress={() =>
-            item.aktif
-              ? onPick(item.key)
-              : Alert.alert(item.judul, "Segera hadir.")
-          }
-        >
-          <Text style={styles.cardTitle}>
-            {item.judul}
-            {item.aktif ? "" : "  (segera)"}
-          </Text>
-          <Text style={styles.cardSub}>{item.desc}</Text>
-        </TouchableOpacity>
-      )}
-    />
+    <View style={styles.header}>
+      <Text style={styles.headerTitle}>{title}</Text>
+      {children}
+    </View>
   );
 }
+
+/* ---------------- Beranda ---------------- */
+
+const LAYANAN = [
+  { key: 'kantin', icon: '🍜', judul: 'Titip Kantin', desc: 'Diantar ke gedung lu', aktif: true },
+  { key: 'print', icon: '🖨️', judul: 'Print & Fotokopi', desc: 'Upload, tinggal ambil', aktif: false },
+  { key: 'ojek', icon: '🏍️', judul: 'Ojek Kampus', desc: 'Gerbang ke fakultas', aktif: false },
+  { key: 'titip_beli', icon: '🛍️', judul: 'Titip Beli', desc: 'Alat tulis, materai, buku', aktif: true },
+  { key: 'belajar', icon: '👥', judul: 'Teman Belajar', desc: 'Cari kelompok tugas', aktif: false },
+  { key: 'info', icon: '📢', judul: 'Info Kampus', desc: 'Jadwal, ruang kosong', aktif: false },
+];
+
+function Beranda({ nama, onPick }: { nama: string; onPick: (key: string) => void }) {
+  const [q, setQ] = useState('');
+  const list = LAYANAN.filter((l) => l.judul.toLowerCase().includes(q.trim().toLowerCase()));
+
+  return (
+    <View style={styles.flex}>
+      <Header title={`Halo, ${nama}`}>
+        <View style={styles.search}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Cari kantin, print, teman belajar"
+            placeholderTextColor={C.muted}
+            value={q}
+            onChangeText={setQ}
+          />
+        </View>
+      </Header>
+      <ScrollView contentContainerStyle={styles.body}>
+        <Text style={styles.sectionTitle}>Layanan</Text>
+        <View style={styles.grid}>
+          {list.map((l) => (
+            <TouchableOpacity
+              key={l.key}
+              style={[styles.service, !l.aktif && styles.serviceOff]}
+              onPress={() => (l.aktif ? onPick(l.key) : notify(l.judul, 'Segera hadir.'))}>
+              <View style={styles.serviceIcon}>
+                <Text style={styles.serviceEmoji}>{l.icon}</Text>
+              </View>
+              <Text style={styles.serviceTitle}>{l.judul}</Text>
+              <Text style={styles.muted}>{l.aktif ? l.desc : 'Segera hadir'}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        {list.length === 0 && <Text style={styles.empty}>Layanan tidak ditemukan.</Text>}
+        <View style={styles.promo}>
+          <Text style={styles.promoTitle}>Promo kantin</Text>
+          <Text style={styles.promoText}>Voucher khusus mahasiswa segera hadir di sini.</Text>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+/* ---------------- Layanan: Titip Kantin ---------------- */
 
 function MerchantList({ onPick }: { onPick: (m: Merchant) => void }) {
   const [list, setList] = useState<Merchant[]>([]);
@@ -111,30 +102,27 @@ function MerchantList({ onPick }: { onPick: (m: Merchant) => void }) {
 
   useEffect(() => {
     supabase
-      .from("profiles")
-      .select("id, nama")
-      .eq("role", "merchant")
+      .from('profiles')
+      .select('id, nama')
+      .eq('role', 'merchant')
       .then(({ data, error }) => {
-        if (error) Alert.alert("Gagal memuat penjual", error.message);
+        if (error) notify('Gagal memuat penjual', error.message);
         else setList((data ?? []) as Merchant[]);
         setLoading(false);
       });
   }, []);
 
-  if (loading)
-    return <ActivityIndicator style={{ marginTop: 24 }} color="#2547D0" />;
+  if (loading) return <ActivityIndicator style={{ marginTop: 24 }} color={C.primary} />;
 
   return (
     <FlatList
       data={list}
       keyExtractor={(m) => m.id}
-      ListEmptyComponent={
-        <Text style={styles.empty}>Belum ada penjual terdaftar.</Text>
-      }
+      ListEmptyComponent={<Text style={styles.empty}>Belum ada penjual terdaftar.</Text>}
       renderItem={({ item }) => (
         <TouchableOpacity style={styles.card} onPress={() => onPick(item)}>
-          <Text style={styles.cardTitle}>{item.nama ?? "Penjual"}</Text>
-          <Text style={styles.cardSub}>Lihat menu</Text>
+          <Text style={styles.cardTitle}>{item.nama ?? 'Penjual'}</Text>
+          <Text style={styles.muted}>Lihat menu</Text>
         </TouchableOpacity>
       )}
     />
@@ -144,40 +132,30 @@ function MerchantList({ onPick }: { onPick: (m: Merchant) => void }) {
 function MenuView({
   userId,
   merchant,
-  onBack,
   onOrdered,
 }: {
   userId: string;
   merchant: Merchant;
-  onBack: () => void;
   onOrdered: () => void;
 }) {
+  void userId;
   const [items, setItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<Record<string, number>>({});
-  const [alamat, setAlamat] = useState("");
+  const [alamat, setAlamat] = useState('');
   const [sending, setSending] = useState(false);
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
-    null,
-  );
+  const [coords, setCoords] = useState<Pt | null>(null);
   const [locating, setLocating] = useState(false);
-
-  async function pakaiLokasi() {
-    setLocating(true);
-    const c = await getCoords();
-    setLocating(false);
-    if (c) setCoords(c);
-  }
 
   useEffect(() => {
     supabase
-      .from("menu_items")
-      .select("id, nama, harga")
-      .eq("merchant_id", merchant.id)
-      .eq("tersedia", true)
-      .order("nama")
+      .from('menu_items')
+      .select('id, nama, harga')
+      .eq('merchant_id', merchant.id)
+      .eq('tersedia', true)
+      .order('nama')
       .then(({ data, error }) => {
-        if (error) Alert.alert("Gagal memuat menu", error.message);
+        if (error) notify('Gagal memuat menu', error.message);
         else setItems((data ?? []) as MenuItem[]);
         setLoading(false);
       });
@@ -185,7 +163,7 @@ function MenuView({
 
   const total = useMemo(
     () => items.reduce((sum, it) => sum + it.harga * (cart[it.id] ?? 0), 0),
-    [items, cart],
+    [items, cart]
   );
   const jumlahItem = Object.values(cart).reduce((a, b) => a + b, 0);
 
@@ -199,24 +177,28 @@ function MenuView({
     });
   }
 
+  async function pakaiLokasi() {
+    setLocating(true);
+    const c = await getCoords();
+    setLocating(false);
+    if (c) setCoords(c);
+  }
+
   async function pesan() {
     if (jumlahItem === 0) {
-      Alert.alert("Keranjang kosong", "Pilih menu dulu ya.");
+      notify('Keranjang kosong', 'Pilih menu dulu ya.');
       return;
     }
     if (!coords) {
-      Alert.alert(
-        "Lokasi belum ada",
-        'Tekan "Gunakan lokasi saya sekarang" dulu.',
-      );
+      notify('Lokasi belum ada', 'Tekan "Gunakan lokasi saya sekarang" dulu.');
       return;
     }
     if (!alamat.trim()) {
-      Alert.alert("Alamat kosong", "Isi alamat antar dulu.");
+      notify('Alamat kosong', 'Isi gedung dan ruang tujuan dulu.');
       return;
     }
     setSending(true);
-    const { error } = await supabase.rpc("buat_pesanan", {
+    const { error } = await supabase.rpc('buat_pesanan', {
       p_merchant_id: merchant.id,
       p_alamat: alamat.trim(),
       p_items: items
@@ -226,32 +208,24 @@ function MenuView({
       p_lng: coords.lng,
     });
     setSending(false);
-
     if (error) {
-      Alert.alert("Gagal membuat pesanan", error.message);
+      notify('Gagal membuat pesanan', error.message);
       return;
     }
-    Alert.alert("Pesanan terkirim!", "Penjual akan segera memprosesnya.");
+    notify('Pesanan terkirim!', 'Penjual akan segera memprosesnya.');
     onOrdered();
   }
 
   return (
     <View style={styles.flex}>
-      <TouchableOpacity onPress={onBack}>
-        <Text style={styles.back}>‹ Kembali</Text>
-      </TouchableOpacity>
-      <Text style={styles.title}>{merchant.nama ?? "Penjual"}</Text>
-
       {loading ? (
-        <ActivityIndicator style={{ marginTop: 24 }} color="#2547D0" />
+        <ActivityIndicator style={{ marginTop: 24 }} color={C.primary} />
       ) : (
         <FlatList
           style={styles.flex}
           data={items}
           keyExtractor={(it) => it.id}
-          ListEmptyComponent={
-            <Text style={styles.empty}>Belum ada menu tersedia.</Text>
-          }
+          ListEmptyComponent={<Text style={styles.empty}>Belum ada menu tersedia.</Text>}
           renderItem={({ item }) => (
             <View style={styles.row}>
               <View style={styles.flex}>
@@ -259,17 +233,11 @@ function MenuView({
                 <Text style={styles.price}>{rupiah(item.harga)}</Text>
               </View>
               <View style={styles.qtyBox}>
-                <TouchableOpacity
-                  style={styles.qtyBtn}
-                  onPress={() => ubah(item.id, -1)}
-                >
+                <TouchableOpacity style={styles.qtyBtn} onPress={() => ubah(item.id, -1)}>
                   <Text style={styles.qtyBtnText}>−</Text>
                 </TouchableOpacity>
                 <Text style={styles.qty}>{cart[item.id] ?? 0}</Text>
-                <TouchableOpacity
-                  style={styles.qtyBtn}
-                  onPress={() => ubah(item.id, 1)}
-                >
+                <TouchableOpacity style={styles.qtyBtn} onPress={() => ubah(item.id, 1)}>
                   <Text style={styles.qtyBtnText}>+</Text>
                 </TouchableOpacity>
               </View>
@@ -279,33 +247,23 @@ function MenuView({
       )}
 
       <View style={styles.checkout}>
-        <TouchableOpacity
-          style={styles.secondaryBtn}
-          onPress={pakaiLokasi}
-          disabled={locating}
-        >
+        <TouchableOpacity style={styles.outlineBtn} onPress={pakaiLokasi} disabled={locating}>
           {locating ? (
-            <ActivityIndicator color="#2547D0" />
+            <ActivityIndicator color={C.primary} />
           ) : (
-            <Text style={styles.secondaryText}>
-              {coords
-                ? "Lokasi antar tersimpan ✓ (ketuk untuk perbarui)"
-                : "Gunakan lokasi saya sekarang"}
+            <Text style={styles.outlineText}>
+              {coords ? 'Lokasi antar tersimpan ✓ (ketuk untuk perbarui)' : 'Gunakan lokasi saya sekarang'}
             </Text>
           )}
         </TouchableOpacity>
         <TextInput
           style={styles.input}
           placeholder="Gedung / ruang (contoh: Gedung B, Ruang 204)"
-          placeholderTextColor="#5B6785"
+          placeholderTextColor={C.muted}
           value={alamat}
           onChangeText={setAlamat}
         />
-        <TouchableOpacity
-          style={styles.primaryBtn}
-          onPress={pesan}
-          disabled={sending}
-        >
+        <TouchableOpacity style={styles.primaryBtn} onPress={pesan} disabled={sending}>
           {sending ? (
             <ActivityIndicator color="#fff" />
           ) : (
@@ -319,239 +277,561 @@ function MenuView({
   );
 }
 
-function OrdersView({ userId }: { userId: string }) {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [refreshing, setRefreshing] = useState(true);
-
-  const load = useCallback(async () => {
-    setRefreshing(true);
-    const { data, error } = await supabase
-      .from("orders")
-      .select(
-        "id, merchant_nama, total, status, created_at, dest_lat, dest_lng, merchant_lat, merchant_lng",
-      )
-      .eq("customer_id", userId)
-      .order("created_at", { ascending: false });
-    if (error) Alert.alert("Gagal memuat pesanan", error.message);
-    else setOrders((data ?? []) as Order[]);
-    setRefreshing(false);
-  }, [userId]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+function ServiceScreen({
+  layanan,
+  userId,
+  onBack,
+  onOrdered,
+}: {
+  layanan: string;
+  userId: string;
+  onBack: () => void;
+  onOrdered: () => void;
+}) {
+  const [merchant, setMerchant] = useState<Merchant | null>(null);
+  const judul = layanan === 'kantin' ? 'Titip Kantin' : 'Titip Beli';
 
   return (
-    <FlatList
-      data={orders}
-      keyExtractor={(o) => o.id}
-      refreshing={refreshing}
-      onRefresh={load}
-      ListEmptyComponent={<Text style={styles.empty}>Belum ada pesanan.</Text>}
-      renderItem={({ item }) => (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>
-            {item.merchant_nama ?? "Penjual"}
-          </Text>
-          <Text style={styles.price}>{rupiah(item.total)}</Text>
-          <Text style={styles.status}>
-            {STATUS_LABEL[item.status] ?? item.status}
-          </Text>
-          <Text style={styles.cardSub}>
-            {new Date(item.created_at).toLocaleString("id-ID")}
-          </Text>
-          {item.status === "diantar" && (
-            <TrackOrder
-              orderId={item.id}
-              dest={
-                item.dest_lat != null && item.dest_lng != null
-                  ? { lat: item.dest_lat, lng: item.dest_lng }
-                  : null
-              }
-              merchant={
-                item.merchant_lat != null && item.merchant_lng != null
-                  ? { lat: item.merchant_lat, lng: item.merchant_lng }
-                  : null
-              }
-            />
-          )}
-        </View>
-      )}
-    />
+    <View style={styles.flex}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => (merchant ? setMerchant(null) : onBack())}>
+          <Text style={styles.headerBack}>‹ Kembali</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{merchant ? (merchant.nama ?? 'Penjual') : judul}</Text>
+        {layanan === 'kantin' && !merchant && (
+          <Text style={styles.headerSub}>Pilih kantin atau warung</Text>
+        )}
+      </View>
+      <View style={styles.serviceBody}>
+        {layanan === 'kantin' ? (
+          merchant ? (
+            <MenuView userId={userId} merchant={merchant} onOrdered={onOrdered} />
+          ) : (
+            <MerchantList onPick={setMerchant} />
+          )
+        ) : (
+          <TitipBeli userId={userId} />
+        )}
+      </View>
+    </View>
   );
 }
 
-export function CustomerHome({
+/* ---------------- Pesanan ---------------- */
+
+const ORDER_LABEL: Record<string, string> = {
+  baru: 'Menunggu penjual',
+  diproses: 'Disiapkan',
+  siap: 'Siap diantar',
+  diantar: 'Diantar',
+  selesai: 'Selesai',
+  dibatalkan: 'Dibatalkan',
+};
+const TITIP_LABEL: Record<string, string> = {
+  terbuka: 'Dicari teman',
+  diambil: 'Dibelikan',
+  selesai: 'Selesai',
+  dibatalkan: 'Dibatalkan',
+};
+
+type Row = {
+  key: string;
+  at: string;
+  jenis: string;
+  label: string;
+  status: string;
+  kategori: Filter;
+  ringkas: string;
+  total: number;
+  order: { id: string; dest: Pt | null; merchant: Pt | null } | null;
+};
+
+function toPt(lat: unknown, lng: unknown): Pt | null {
+  return typeof lat === 'number' && typeof lng === 'number' ? { lat, lng } : null;
+}
+
+function PesananTab({ userId, initial }: { userId: string; initial: Filter }) {
+  const [filter, setFilter] = useState<Filter>(initial);
+  const [rows, setRows] = useState<Row[]>([]);
+  const [refreshing, setRefreshing] = useState(true);
+
+  const load = useCallback(
+    async (silent = false) => {
+      if (!silent) setRefreshing(true);
+      const [o, t] = await Promise.all([
+        supabase
+          .from('orders')
+          .select(
+            'id, merchant_nama, total, status, created_at, dest_lat, dest_lng, merchant_lat, merchant_lng, order_items(jumlah)'
+          )
+          .eq('customer_id', userId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('titip_requests')
+          .select('id, barang, estimasi_harga, upah, status, created_at')
+          .eq('requester_id', userId)
+          .order('created_at', { ascending: false }),
+      ]);
+      const err = o.error ?? t.error;
+      if (err) {
+        if (!silent) notify('Gagal memuat pesanan', err.message);
+      } else {
+        const orderRows: Row[] = ((o.data ?? []) as any[]).map((x) => ({
+          key: 'o' + x.id,
+          at: x.created_at,
+          jenis: 'Titip Kantin',
+          label: ORDER_LABEL[x.status] ?? x.status,
+          status: x.status,
+          kategori:
+            x.status === 'selesai' ? 'selesai' : x.status === 'dibatalkan' ? 'dibatalkan' : 'aktif',
+          ringkas: `${tgl(x.created_at)} · ${(x.order_items ?? []).reduce(
+            (a: number, i: any) => a + i.jumlah,
+            0
+          )} item · ${x.merchant_nama ?? 'Penjual'}`,
+          total: x.total,
+          order: {
+            id: x.id,
+            dest: toPt(x.dest_lat, x.dest_lng),
+            merchant: toPt(x.merchant_lat, x.merchant_lng),
+          },
+        }));
+        const titipRows: Row[] = ((t.data ?? []) as any[]).map((x) => ({
+          key: 't' + x.id,
+          at: x.created_at,
+          jenis: 'Titip Beli',
+          label: TITIP_LABEL[x.status] ?? x.status,
+          status: x.status,
+          kategori:
+            x.status === 'selesai' ? 'selesai' : x.status === 'dibatalkan' ? 'dibatalkan' : 'aktif',
+          ringkas: `${tgl(x.created_at)} · ${x.barang}`,
+          total: x.estimasi_harga + x.upah,
+          order: null,
+        }));
+        setRows([...orderRows, ...titipRows].sort((a, b) => (a.at < b.at ? 1 : -1)));
+      }
+      setRefreshing(false);
+    },
+    [userId]
+  );
+
+  useEffect(() => {
+    load();
+    const timer = setInterval(() => load(true), 10000);
+    return () => clearInterval(timer);
+  }, [load]);
+
+  const shown = rows.filter((r) => r.kategori === filter);
+  const FILTERS: { key: Filter; label: string }[] = [
+    { key: 'aktif', label: 'Aktif' },
+    { key: 'selesai', label: 'Selesai' },
+    { key: 'dibatalkan', label: 'Dibatalkan' },
+  ];
+
+  return (
+    <View style={styles.flex}>
+      <Header title="Pesanan">
+        <View style={styles.pillRow}>
+          {FILTERS.map((f) => (
+            <TouchableOpacity
+              key={f.key}
+              style={[styles.pill, filter === f.key ? styles.pillOn : styles.pillOff]}
+              onPress={() => setFilter(f.key)}>
+              <Text style={filter === f.key ? styles.pillTextOn : styles.pillTextOff}>{f.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </Header>
+      <FlatList
+        style={styles.flex}
+        contentContainerStyle={styles.body}
+        data={shown}
+        keyExtractor={(r) => r.key}
+        refreshing={refreshing}
+        onRefresh={() => load()}
+        ListEmptyComponent={<Text style={styles.empty}>Belum ada pesanan di sini.</Text>}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <View style={styles.cardTop}>
+              <Text style={styles.cardTitle}>{item.jenis}</Text>
+              <Text style={styles.badge}>{item.label}</Text>
+            </View>
+            <Text style={styles.muted}>{item.ringkas}</Text>
+            <Text style={styles.totalText}>{rupiah(item.total)}</Text>
+            {item.order && item.status === 'diantar' && (
+              <TrackOrder orderId={item.order.id} dest={item.order.dest} merchant={item.order.merchant} />
+            )}
+          </View>
+        )}
+      />
+    </View>
+  );
+}
+
+/* ---------------- Chat ---------------- */
+
+function ChatTab() {
+  return (
+    <View style={styles.flex}>
+      <Header title="Chat" />
+      <View style={styles.centerBox}>
+        <Text style={styles.cardTitle}>Belum ada percakapan</Text>
+        <Text style={[styles.muted, { textAlign: 'center', marginTop: 6 }]}>
+          Chat dengan driver dan teman yang membantumu akan muncul di sini. Fitur ini segera hadir.
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/* ---------------- Akun ---------------- */
+
+function AkunTab({
   userId,
   nama,
+  onRiwayat,
 }: {
   userId: string;
   nama: string;
+  onRiwayat: () => void;
 }) {
-  const [tab, setTab] = useState<"cari" | "pesanan">("cari");
-  const [merchant, setMerchant] = useState<Merchant | null>(null);
-  const [layanan, setLayanan] = useState<string | null>(null);
+  const [kampus, setKampus] = useState('');
+  const [nPesanan, setNPesanan] = useState<number | null>(null);
+  const [nTitip, setNTitip] = useState<number | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from('profiles')
+      .select('kampus')
+      .eq('id', userId)
+      .single()
+      .then(({ data }) => setKampus((data as { kampus: string | null } | null)?.kampus ?? ''));
+    supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('customer_id', userId)
+      .then(({ count }) => setNPesanan(count ?? 0));
+    supabase
+      .from('titip_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('requester_id', userId)
+      .then(({ count }) => setNTitip(count ?? 0));
+  }, [userId]);
+
+  const MENU = [
+    { label: 'Riwayat pesanan', onPress: onRiwayat },
+    { label: 'Alamat antar', onPress: () => notify('Alamat antar', 'Segera hadir.') },
+    { label: 'Metode pembayaran', onPress: () => notify('Metode pembayaran', 'Segera hadir.') },
+    { label: 'Bantuan', onPress: () => notify('Bantuan', 'Segera hadir.') },
+  ];
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.flex}>
-          <Text style={styles.title}>Halo, {nama}!</Text>
-          <Text style={styles.cardSub}>Mau pakai layanan apa hari ini?</Text>
+    <View style={styles.flex}>
+      <Header title="Akun" />
+      <ScrollView contentContainerStyle={styles.body}>
+        <View style={styles.profileCard}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{nama.trim().charAt(0).toUpperCase() || '?'}</Text>
+          </View>
+          <View style={styles.flex}>
+            <Text style={styles.cardTitle}>{nama}</Text>
+            <Text style={styles.muted}>{kampus || 'Kampus belum diisi'}</Text>
+          </View>
         </View>
-        <TouchableOpacity onPress={() => supabase.auth.signOut()}>
-          <Text style={styles.logout}>Keluar</Text>
-        </TouchableOpacity>
-      </View>
 
-      <View style={styles.tabs}>
-        <TouchableOpacity
-          style={[styles.tab, tab === "cari" && styles.tabActive]}
-          onPress={() => {
-            setTab("cari");
-            setMerchant(null);
-            setLayanan(null);
-          }}
-        >
-          <Text
-            style={[styles.tabText, tab === "cari" && styles.tabTextActive]}
-          >
-            Layanan
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, tab === "pesanan" && styles.tabActive]}
-          onPress={() => setTab("pesanan")}
-        >
-          <Text
-            style={[styles.tabText, tab === "pesanan" && styles.tabTextActive]}
-          >
-            Pesanan Saya
-          </Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.statRow}>
+          <View style={styles.stat}>
+            <Text style={styles.statNum}>{nPesanan ?? '–'}</Text>
+            <Text style={styles.muted}>Pesanan</Text>
+          </View>
+          <View style={styles.stat}>
+            <Text style={styles.statNum}>{nTitip ?? '–'}</Text>
+            <Text style={styles.muted}>Titipan</Text>
+          </View>
+        </View>
 
-      {tab === "pesanan" ? (
-        <OrdersView userId={userId} />
-      ) : merchant ? (
-        <MenuView
-          userId={userId}
-          merchant={merchant}
-          onBack={() => setMerchant(null)}
-          onOrdered={() => {
-            setMerchant(null);
-            setTab("pesanan");
-          }}
-        />
-      ) : layanan === "kantin" ? (
-        <>
-          <TouchableOpacity onPress={() => setLayanan(null)}>
-            <Text style={styles.back}>‹ Semua layanan</Text>
+        {MENU.map((m) => (
+          <TouchableOpacity key={m.label} style={styles.menuRow} onPress={m.onPress}>
+            <Text style={styles.menuText}>{m.label}</Text>
+            <Text style={styles.muted}>›</Text>
           </TouchableOpacity>
-          <MerchantList onPick={setMerchant} />
-        </>
-      ) : layanan === "titip_beli" ? (
-        <>
-          <TouchableOpacity onPress={() => setLayanan(null)}>
-            <Text style={styles.back}>‹ Semua layanan</Text>
-          </TouchableOpacity>
-          <TitipBeli userId={userId} />
-        </>
-      ) : (
-        <ServiceGrid onPick={setLayanan} />
-      )}
+        ))}
+
+        <TouchableOpacity style={styles.logoutBtn} onPress={() => supabase.auth.signOut()}>
+          <Text style={styles.logoutText}>Keluar</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
+}
+
+/* ---------------- Navigasi bawah + wadah ---------------- */
+
+const NAV: { key: Tab; label: string }[] = [
+  { key: 'beranda', label: 'Beranda' },
+  { key: 'pesanan', label: 'Pesanan' },
+  { key: 'chat', label: 'Chat' },
+  { key: 'akun', label: 'Akun' },
+];
+
+function BottomNav({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
+  return (
+    <View style={styles.nav}>
+      {NAV.map((n) => (
+        <TouchableOpacity
+          key={n.key}
+          style={[styles.navBtn, tab === n.key && styles.navBtnOn]}
+          onPress={() => onChange(n.key)}>
+          <Text style={tab === n.key ? styles.navTextOn : styles.navTextOff}>{n.label}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
+export function CustomerHome({ userId, nama }: { userId: string; nama: string }) {
+  const [tab, setTab] = useState<Tab>('beranda');
+  const [layanan, setLayanan] = useState<string | null>(null);
+  const [pesananFilter, setPesananFilter] = useState<Filter>('aktif');
+
+  if (layanan) {
+    return (
+      <ServiceScreen
+        layanan={layanan}
+        userId={userId}
+        onBack={() => setLayanan(null)}
+        onOrdered={() => {
+          setLayanan(null);
+          setPesananFilter('aktif');
+          setTab('pesanan');
+        }}
+      />
+    );
+  }
+
+  return (
+    <View style={styles.flex}>
+      <View style={styles.flex}>
+        {tab === 'beranda' && <Beranda nama={nama} onPick={setLayanan} />}
+        {tab === 'pesanan' && <PesananTab key={pesananFilter} userId={userId} initial={pesananFilter} />}
+        {tab === 'chat' && <ChatTab />}
+        {tab === 'akun' && (
+          <AkunTab
+            userId={userId}
+            nama={nama}
+            onRiwayat={() => {
+              setPesananFilter('selesai');
+              setTab('pesanan');
+            }}
+          />
+        )}
+      </View>
+      <BottomNav tab={tab} onChange={setTab} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: { flex: 1, padding: 16 },
-  header: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
-  title: { fontSize: 22, fontFamily: 'PlusJakartaSans_700Bold', color: "#0E1B5C" },
-  logout: { color: "#D92D20", fontFamily: 'PlusJakartaSans_600SemiBold' },
-  back: { color: "#2547D0", fontSize: 16, marginBottom: 8 },
-  tabs: { flexDirection: "row", gap: 8, marginBottom: 12 },
-  tab: {
-    flex: 1,
-    padding: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#C9D6F5",
-    alignItems: "center",
+  header: {
+    backgroundColor: C.primary,
+    paddingTop: 24,
+    paddingBottom: 22,
+    paddingHorizontal: 22,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    gap: 14,
   },
-  tabActive: { backgroundColor: "#2547D0", borderColor: "#2547D0" },
-  tabText: { color: "#0E1B5C", fontFamily: 'PlusJakartaSans_600SemiBold' },
-  tabTextActive: { color: "#fff" },
-  empty: { textAlign: "center", color: "#5B6785", marginTop: 24 },
+  headerTitle: { fontFamily: F.xbold, fontSize: 24, color: '#fff' },
+  headerSub: { fontFamily: F.reg, fontSize: 14, color: '#fff', opacity: 0.9 },
+  headerBack: { fontFamily: F.semi, fontSize: 15, color: '#fff' },
+  search: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    minHeight: 48,
+    paddingHorizontal: 14,
+    justifyContent: 'center',
+  },
+  searchInput: { fontFamily: F.reg, fontSize: 14, color: C.navy },
+  body: { padding: 22, gap: 14 },
+  serviceBody: { flex: 1, paddingHorizontal: 22, paddingTop: 16 },
+  sectionTitle: { fontFamily: F.xbold, fontSize: 18, color: C.navy },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 14 },
+  service: {
+    width: '48%',
+    minHeight: 112,
+    padding: 14,
+    gap: 8,
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#DDE5F7',
+  },
+  serviceOff: { opacity: 0.6 },
+  serviceIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: C.soft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  serviceEmoji: { fontSize: 22 },
+  serviceTitle: { fontFamily: F.xbold, fontSize: 15, color: C.navy },
+  muted: { fontFamily: F.reg, fontSize: 13, color: C.muted },
+  empty: { fontFamily: F.reg, textAlign: 'center', color: C.muted, marginTop: 24 },
+  promo: { backgroundColor: C.yellow, borderRadius: 16, padding: 16, gap: 4 },
+  promoTitle: { fontFamily: F.xbold, fontSize: 16, color: C.navy },
+  promoText: { fontFamily: F.reg, fontSize: 13, color: C.navy },
+
   card: {
     padding: 14,
+    gap: 6,
+    backgroundColor: '#fff',
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#DDE5F7",
-    borderRadius: 14,
-    marginBottom: 8,
-    backgroundColor: "#fff",
+    borderColor: '#DDE5F7',
+    marginBottom: 12,
   },
-  cardTitle: { fontSize: 16, fontFamily: 'PlusJakartaSans_600SemiBold', color: "#0E1B5C" },
-  cardOff: { opacity: 0.55 },
-  cardSub: { fontSize: 13, color: "#5B6785", marginTop: 2 },
-  price: { fontSize: 14, color: "#2547D0", marginTop: 2 },
-  status: { fontSize: 14, fontFamily: 'PlusJakartaSans_600SemiBold', color: "#c60", marginTop: 4 },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cardTitle: { fontFamily: F.xbold, fontSize: 16, color: C.navy },
+  badge: {
+    fontFamily: F.xbold,
+    fontSize: 12,
+    color: C.primary,
+    backgroundColor: C.soft,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  totalText: { fontFamily: F.xbold, fontSize: 15, color: C.navy },
+  price: { fontFamily: F.semi, fontSize: 14, color: C.primary, marginTop: 2 },
   row: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 12,
-    borderWidth: 1,
-    borderColor: "#DDE5F7",
+    backgroundColor: '#fff',
     borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#DDE5F7',
     marginBottom: 8,
-    backgroundColor: "#fff",
   },
-  qtyBox: { flexDirection: "row", alignItems: "center", gap: 10 },
+  qtyBox: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   qtyBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#2547D0",
-    alignItems: "center",
-    justifyContent: "center",
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: C.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  qtyBtnText: {
-    color: "#fff",
-    fontSize: 20,
-    fontFamily: 'PlusJakartaSans_700Bold',
-    lineHeight: 22,
-  },
-  qty: {
-    fontSize: 16,
-    fontFamily: 'PlusJakartaSans_600SemiBold',
-    minWidth: 20,
-    textAlign: "center",
-    color: "#0E1B5C",
-  },
-  checkout: { gap: 8, paddingTop: 8 },
+  qtyBtnText: { color: '#fff', fontSize: 20, fontFamily: F.bold, lineHeight: 22 },
+  qty: { fontFamily: F.bold, fontSize: 16, minWidth: 20, textAlign: 'center', color: C.navy },
+  checkout: { gap: 8, paddingVertical: 10 },
   input: {
+    minHeight: 48,
     borderWidth: 1,
-    borderColor: "#C9D6F5",
+    borderColor: C.border,
     borderRadius: 14,
-    padding: 12,
-    fontSize: 16,
-    color: "#0E1B5C",
-    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 14,
+    fontFamily: F.reg,
+    fontSize: 15,
+    color: C.navy,
+    backgroundColor: '#fff',
   },
   primaryBtn: {
-    backgroundColor: "#2547D0",
-    padding: 14,
+    minHeight: 52,
+    backgroundColor: C.primary,
     borderRadius: 14,
-    alignItems: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  primaryText: { color: "#fff", fontSize: 16, fontFamily: 'PlusJakartaSans_700Bold' },
-  secondaryBtn: {
+  primaryText: { fontFamily: F.xbold, fontSize: 15, color: '#fff' },
+  outlineBtn: {
+    minHeight: 44,
     borderWidth: 1,
-    borderColor: "#2547D0",
-    padding: 12,
+    borderColor: C.primary,
     borderRadius: 14,
-    alignItems: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  secondaryText: { color: "#2547D0", fontFamily: 'PlusJakartaSans_700Bold' },
+  outlineText: { fontFamily: F.bold, color: C.primary },
+
+  pillRow: { flexDirection: 'row', gap: 8 },
+  pill: { minHeight: 44, paddingHorizontal: 14, borderRadius: 22, justifyContent: 'center' },
+  pillOn: { backgroundColor: '#fff' },
+  pillOff: { backgroundColor: 'rgba(255,255,255,0.18)' },
+  pillTextOn: { fontFamily: F.xbold, fontSize: 14, color: C.primary },
+  pillTextOff: { fontFamily: F.semi, fontSize: 14, color: '#fff' },
+
+  centerBox: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
+
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 14,
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#DDE5F7',
+  },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: C.soft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: { fontFamily: F.xbold, fontSize: 22, color: C.primary },
+  statRow: { flexDirection: 'row', gap: 12 },
+  stat: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 14,
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#DDE5F7',
+  },
+  statNum: { fontFamily: F.xbold, fontSize: 22, color: C.primary },
+  menuRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    minHeight: 52,
+    paddingHorizontal: 14,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#DDE5F7',
+  },
+  menuText: { fontFamily: F.semi, fontSize: 15, color: C.navy },
+  logoutBtn: {
+    minHeight: 52,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: C.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  logoutText: { fontFamily: F.xbold, color: C.danger },
+
+  nav: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 6,
+    marginHorizontal: 16,
+    marginVertical: 10,
+    borderWidth: 1,
+    borderColor: '#DDE5F7',
+  },
+  navBtn: { minHeight: 44, minWidth: 76, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  navBtnOn: { backgroundColor: C.soft },
+  navTextOn: { fontFamily: F.xbold, fontSize: 14, color: C.primary },
+  navTextOff: { fontFamily: F.reg, fontSize: 14, color: C.muted },
 });
