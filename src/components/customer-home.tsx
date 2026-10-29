@@ -12,6 +12,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { getCoords } from "@/lib/geo";
 import { TrackOrder } from "@/components/track-order";
+import { TitipBeli } from "@/components/titip-beli";
 
 type Merchant = { id: string; nama: string | null };
 type MenuItem = { id: string; nama: string; harga: number };
@@ -63,7 +64,7 @@ const LAYANAN = [
     key: "titip_beli",
     judul: "Titip Beli",
     desc: "Minta tolong teman beli alat tulis, materai, buku",
-    aktif: false,
+    aktif: true,
   },
   {
     key: "belajar",
@@ -448,6 +449,13 @@ export function CustomerHome({
             <Text style={styles.back}>‹ Semua layanan</Text>
           </TouchableOpacity>
           <MerchantList onPick={setMerchant} />
+        </>
+      ) : layanan === "titip_beli" ? (
+        <>
+          <TouchableOpacity onPress={() => setLayanan(null)}>
+            <Text style={styles.back}>‹ Semua layanan</Text>
+          </TouchableOpacity>
+          <TitipBeli userId={userId} />
         </>
       ) : (
         <ServiceGrid onPick={setLayanan} />
