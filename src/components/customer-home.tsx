@@ -40,6 +40,70 @@ function rupiah(n: number) {
   return "Rp " + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
+const LAYANAN = [
+  {
+    key: "kantin",
+    judul: "Titip Kantin",
+    desc: "Pesan makanan dari kantin atau warung, diantar ke gedung atau kelas",
+    aktif: true,
+  },
+  {
+    key: "print",
+    judul: "Fotokopi & Print",
+    desc: "Upload file, ambil di tempat atau diantar",
+    aktif: false,
+  },
+  {
+    key: "ojek",
+    judul: "Ojek Kampus",
+    desc: "Antar jarak pendek di sekitar kampus",
+    aktif: false,
+  },
+  {
+    key: "titip_beli",
+    judul: "Titip Beli",
+    desc: "Minta tolong teman beli alat tulis, materai, buku",
+    aktif: false,
+  },
+  {
+    key: "belajar",
+    judul: "Teman Belajar",
+    desc: "Cari kelompok belajar",
+    aktif: false,
+  },
+  {
+    key: "info",
+    judul: "Info Kampus",
+    desc: "Jadwal, ruang kosong, dan kegiatan",
+    aktif: false,
+  },
+];
+
+function ServiceGrid({ onPick }: { onPick: (key: string) => void }) {
+  return (
+    <FlatList
+      data={LAYANAN}
+      keyExtractor={(l) => l.key}
+      renderItem={({ item }) => (
+        <TouchableOpacity
+          style={[styles.card, !item.aktif && styles.cardOff]}
+          onPress={() =>
+            item.aktif
+              ? onPick(item.key)
+              : Alert.alert(item.judul, "Segera hadir.")
+          }
+        >
+          <Text style={styles.cardTitle}>
+            {item.judul}
+            {item.aktif ? "" : "  (segera)"}
+          </Text>
+          <Text style={styles.cardSub}>{item.desc}</Text>
+        </TouchableOpacity>
+      )}
+    />
+  );
+}
+
 function MerchantList({ onPick }: { onPick: (m: Merchant) => void }) {
   const [list, setList] = useState<Merchant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -231,7 +295,7 @@ function MenuView({
         </TouchableOpacity>
         <TextInput
           style={styles.input}
-          placeholder="Alamat antar"
+          placeholder="Gedung / ruang (contoh: Gedung B, Ruang 204)"
           placeholderTextColor="#888"
           value={alamat}
           onChangeText={setAlamat}
@@ -325,13 +389,14 @@ export function CustomerHome({
 }) {
   const [tab, setTab] = useState<"cari" | "pesanan">("cari");
   const [merchant, setMerchant] = useState<Merchant | null>(null);
+  const [layanan, setLayanan] = useState<string | null>(null);
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.flex}>
           <Text style={styles.title}>Halo, {nama}!</Text>
-          <Text style={styles.cardSub}>Mau makan apa hari ini?</Text>
+          <Text style={styles.cardSub}>Mau pakai layanan apa hari ini?</Text>
         </View>
         <TouchableOpacity onPress={() => supabase.auth.signOut()}>
           <Text style={styles.logout}>Keluar</Text>
@@ -344,12 +409,13 @@ export function CustomerHome({
           onPress={() => {
             setTab("cari");
             setMerchant(null);
+            setLayanan(null);
           }}
         >
           <Text
             style={[styles.tabText, tab === "cari" && styles.tabTextActive]}
           >
-            Cari Makanan
+            Layanan
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -376,8 +442,15 @@ export function CustomerHome({
             setTab("pesanan");
           }}
         />
+      ) : layanan === "kantin" ? (
+        <>
+          <TouchableOpacity onPress={() => setLayanan(null)}>
+            <Text style={styles.back}>‹ Semua layanan</Text>
+          </TouchableOpacity>
+          <MerchantList onPick={setMerchant} />
+        </>
       ) : (
-        <MerchantList onPick={setMerchant} />
+        <ServiceGrid onPick={setLayanan} />
       )}
     </View>
   );
@@ -412,6 +485,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   cardTitle: { fontSize: 16, fontWeight: "600", color: "#111" },
+  cardOff: { opacity: 0.55 },
   cardSub: { fontSize: 13, color: "#666", marginTop: 2 },
   price: { fontSize: 14, color: "#00AA13", marginTop: 2 },
   status: { fontSize: 14, fontWeight: "600", color: "#c60", marginTop: 4 },

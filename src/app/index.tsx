@@ -79,7 +79,7 @@ function AuthForm() {
         contentContainerStyle={styles.form}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>Gojek Mini</Text>
+        <Text style={styles.title}>KampusGo</Text>
         <Text style={styles.subtitle}>
           {mode === "login" ? "Masuk ke akunmu" : "Buat akun baru"}
         </Text>
