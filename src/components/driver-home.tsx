@@ -10,6 +10,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { jarakKm, openRoute } from "@/lib/geo";
 import { LocationSharer } from "@/components/location-sharer";
+import { ChatRoom } from "@/components/chat-room";
 
 type Item = { nama: string; jumlah: number };
 type Order = {
@@ -37,6 +38,7 @@ export function DriverHome({ userId, nama }: { userId: string; nama: string }) {
   const [tab, setTab] = useState<"tersedia" | "saya">("tersedia");
   const [orders, setOrders] = useState<Order[]>([]);
   const [refreshing, setRefreshing] = useState(true);
+  const [chatId, setChatId] = useState<string | null>(null);
   const [aktifIds, setAktifIds] = useState<string[]>([]);
 
   const loadAktif = useCallback(async () => {
@@ -115,6 +117,17 @@ export function DriverHome({ userId, nama }: { userId: string; nama: string }) {
       load(true);
       loadAktif();
     }
+  }
+
+  if (chatId) {
+    return (
+      <ChatRoom
+        threadType="order"
+        threadId={chatId}
+        userId={userId}
+        onBack={() => setChatId(null)}
+      />
+    );
   }
 
   return (
@@ -231,6 +244,14 @@ export function DriverHome({ userId, nama }: { userId: string; nama: string }) {
             )}
             {tab === "saya" && item.status === "diantar" && (
               <TouchableOpacity
+                style={styles.chatBtn}
+                onPress={() => setChatId(item.id)}
+              >
+                <Text style={styles.chatText}>Chat customer</Text>
+              </TouchableOpacity>
+            )}
+            {tab === "saya" && item.status === "diantar" && (
+              <TouchableOpacity
                 style={styles.btn}
                 onPress={() => selesai(item.id)}
               >
@@ -251,9 +272,13 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { flex: 1, padding: 16 },
   header: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
-  title: { fontSize: 22, fontFamily: 'PlusJakartaSans_700Bold', color: "#0E1B5C" },
+  title: {
+    fontSize: 22,
+    fontFamily: "PlusJakartaSans_700Bold",
+    color: "#0E1B5C",
+  },
   subtitle: { fontSize: 13, color: "#5B6785" },
-  logout: { color: "#D92D20", fontFamily: 'PlusJakartaSans_600SemiBold' },
+  logout: { color: "#D92D20", fontFamily: "PlusJakartaSans_600SemiBold" },
   tabs: { flexDirection: "row", gap: 8, marginBottom: 12 },
   tab: {
     flex: 1,
@@ -264,7 +289,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   tabActive: { backgroundColor: "#2547D0", borderColor: "#2547D0" },
-  tabText: { color: "#0E1B5C", fontFamily: 'PlusJakartaSans_600SemiBold' },
+  tabText: { color: "#0E1B5C", fontFamily: "PlusJakartaSans_600SemiBold" },
   tabTextActive: { color: "#fff" },
   empty: { textAlign: "center", color: "#5B6785", marginTop: 24 },
   card: {
@@ -277,13 +302,18 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 16,
-    fontFamily: 'PlusJakartaSans_700Bold',
+    fontFamily: "PlusJakartaSans_700Bold",
     color: "#0E1B5C",
     marginBottom: 6,
   },
   line: { fontSize: 15, color: "#0E1B5C" },
   meta: { fontSize: 13, color: "#5B6785", marginTop: 2 },
-  total: { fontSize: 15, fontFamily: 'PlusJakartaSans_700Bold', color: "#2547D0", marginTop: 6 },
+  total: {
+    fontSize: 15,
+    fontFamily: "PlusJakartaSans_700Bold",
+    color: "#2547D0",
+    marginTop: 6,
+  },
   btn: {
     backgroundColor: "#2547D0",
     padding: 12,
@@ -291,8 +321,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 10,
   },
-  btnText: { color: "#fff", fontFamily: 'PlusJakartaSans_700Bold' },
-  done: { color: "#2547D0", fontFamily: 'PlusJakartaSans_700Bold', marginTop: 10 },
+  btnText: { color: "#fff", fontFamily: "PlusJakartaSans_700Bold" },
+  done: {
+    color: "#2547D0",
+    fontFamily: "PlusJakartaSans_700Bold",
+    marginTop: 10,
+  },
   sharing: { fontSize: 13, color: "#0E1B5C", marginBottom: 8 },
   routeRow: { flexDirection: "row", gap: 8, marginTop: 10 },
   routeBtn: {
@@ -303,5 +337,18 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
   },
-  routeText: { color: "#2547D0", fontFamily: 'PlusJakartaSans_700Bold', fontSize: 13 },
+  routeText: {
+    color: "#2547D0",
+    fontFamily: "PlusJakartaSans_700Bold",
+    fontSize: 13,
+  },
+  chatBtn: {
+    borderWidth: 1,
+    borderColor: "#2547D0",
+    padding: 12,
+    borderRadius: 14,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  chatText: { fontFamily: "PlusJakartaSans_700Bold", color: "#2547D0" },
 });

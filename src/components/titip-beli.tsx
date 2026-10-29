@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -8,8 +8,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { supabase } from '@/lib/supabase';
+} from "react-native";
+import { supabase } from "@/lib/supabase";
+import { ChatRoom } from "@/components/chat-room";
 
 type Titipan = {
   id: string;
@@ -26,50 +27,51 @@ type Titipan = {
 };
 
 const COLS =
-  'id, requester_id, requester_nama, helper_id, helper_nama, barang, estimasi_harga, upah, lokasi, status, created_at';
+  "id, requester_id, requester_nama, helper_id, helper_nama, barang, estimasi_harga, upah, lokasi, status, created_at";
 
 const STATUS_LABEL: Record<string, string> = {
-  terbuka: 'Menunggu teman yang membantu',
-  diambil: 'Sedang dibelikan',
-  selesai: 'Selesai',
-  dibatalkan: 'Dibatalkan',
+  terbuka: "Menunggu teman yang membantu",
+  diambil: "Sedang dibelikan",
+  selesai: "Selesai",
+  dibatalkan: "Dibatalkan",
 };
 
 function rupiah(n: number) {
-  return 'Rp ' + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return "Rp " + n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
 export function TitipBeli({ userId }: { userId: string }) {
-  const [tab, setTab] = useState<'minta' | 'bantu'>('minta');
+  const [tab, setTab] = useState<"minta" | "bantu">("minta");
   const [list, setList] = useState<Titipan[]>([]);
   const [refreshing, setRefreshing] = useState(true);
-  const [barang, setBarang] = useState('');
-  const [estimasi, setEstimasi] = useState('');
-  const [upah, setUpah] = useState('');
-  const [lokasi, setLokasi] = useState('');
+  const [barang, setBarang] = useState("");
+  const [estimasi, setEstimasi] = useState("");
+  const [upah, setUpah] = useState("");
+  const [lokasi, setLokasi] = useState("");
   const [sending, setSending] = useState(false);
+  const [chat, setChat] = useState<string | null>(null);
 
   const load = useCallback(
     async (silent = false) => {
       if (!silent) setRefreshing(true);
       const base = supabase
-        .from('titip_requests')
+        .from("titip_requests")
         .select(COLS)
-        .order('created_at', { ascending: false });
+        .order("created_at", { ascending: false });
       const { data, error } =
-        tab === 'minta'
-          ? await base.eq('requester_id', userId)
+        tab === "minta"
+          ? await base.eq("requester_id", userId)
           : await base.or(
-              `and(status.eq.terbuka,requester_id.neq.${userId}),helper_id.eq.${userId}`
+              `and(status.eq.terbuka,requester_id.neq.${userId}),helper_id.eq.${userId}`,
             );
       if (error) {
-        if (!silent) Alert.alert('Gagal memuat', error.message);
+        if (!silent) Alert.alert("Gagal memuat", error.message);
       } else {
         setList((data ?? []) as Titipan[]);
       }
       setRefreshing(false);
     },
-    [tab, userId]
+    [tab, userId],
   );
 
   useEffect(() => {
@@ -80,18 +82,21 @@ export function TitipBeli({ userId }: { userId: string }) {
   }, [load]);
 
   async function kirim() {
-    const hargaAngka = parseInt(estimasi.replace(/\D/g, ''), 10);
-    const upahAngka = parseInt(upah.replace(/\D/g, ''), 10);
+    const hargaAngka = parseInt(estimasi.replace(/\D/g, ""), 10);
+    const upahAngka = parseInt(upah.replace(/\D/g, ""), 10);
     if (barang.trim().length < 3 || lokasi.trim().length < 2) {
-      Alert.alert('Data belum lengkap', 'Isi barang dan lokasi antar.');
+      Alert.alert("Data belum lengkap", "Isi barang dan lokasi antar.");
       return;
     }
     if (isNaN(hargaAngka) || isNaN(upahAngka)) {
-      Alert.alert('Angka belum benar', 'Isi estimasi harga dan upah dengan angka.');
+      Alert.alert(
+        "Angka belum benar",
+        "Isi estimasi harga dan upah dengan angka.",
+      );
       return;
     }
     setSending(true);
-    const { error } = await supabase.rpc('buat_titipan', {
+    const { error } = await supabase.rpc("buat_titipan", {
       p_barang: barang.trim(),
       p_estimasi: hargaAngka,
       p_upah: upahAngka,
@@ -99,28 +104,39 @@ export function TitipBeli({ userId }: { userId: string }) {
     });
     setSending(false);
     if (error) {
-      Alert.alert('Gagal mengirim', error.message);
+      Alert.alert("Gagal mengirim", error.message);
       return;
     }
-    setBarang('');
-    setEstimasi('');
-    setUpah('');
-    setLokasi('');
+    setBarang("");
+    setEstimasi("");
+    setUpah("");
+    setLokasi("");
     load(true);
-    Alert.alert('Terkirim', 'Permintaanmu sudah bisa dilihat teman-teman.');
+    Alert.alert("Terkirim", "Permintaanmu sudah bisa dilihat teman-teman.");
   }
 
   async function jalankan(fn: string, id: string) {
     const { error } = await supabase.rpc(fn, { p_id: id });
-    if (error) Alert.alert('Gagal', error.message);
+    if (error) Alert.alert("Gagal", error.message);
     load(true);
   }
 
   function konfirmasi(judul: string, pesan: string, fn: string, id: string) {
     Alert.alert(judul, pesan, [
-      { text: 'Batal', style: 'cancel' },
-      { text: 'Ya', onPress: () => jalankan(fn, id) },
+      { text: "Batal", style: "cancel" },
+      { text: "Ya", onPress: () => jalankan(fn, id) },
     ]);
+  }
+
+  if (chat) {
+    return (
+      <ChatRoom
+        threadType="titip"
+        threadId={chat}
+        userId={userId}
+        onBack={() => setChat(null)}
+      />
+    );
   }
 
   const form = (
@@ -157,7 +173,11 @@ export function TitipBeli({ userId }: { userId: string }) {
         value={lokasi}
         onChangeText={setLokasi}
       />
-      <TouchableOpacity style={styles.primaryBtn} onPress={kirim} disabled={sending}>
+      <TouchableOpacity
+        style={styles.primaryBtn}
+        onPress={kirim}
+        disabled={sending}
+      >
         {sending ? (
           <ActivityIndicator color="#fff" />
         ) : (
@@ -165,8 +185,8 @@ export function TitipBeli({ userId }: { userId: string }) {
         )}
       </TouchableOpacity>
       <Text style={styles.notice}>
-        Bayar tunai langsung ke teman yang membantu: harga barang sebenarnya ditambah upah.
-        Jangan menitip barang terlarang.
+        Bayar tunai langsung ke teman yang membantu: harga barang sebenarnya
+        ditambah upah. Jangan menitip barang terlarang.
       </Text>
       <Text style={styles.formTitle}>Permintaan saya</Text>
     </View>
@@ -176,16 +196,22 @@ export function TitipBeli({ userId }: { userId: string }) {
     <View style={styles.flex}>
       <View style={styles.tabs}>
         <TouchableOpacity
-          style={[styles.tab, tab === 'minta' && styles.tabActive]}
-          onPress={() => setTab('minta')}>
-          <Text style={[styles.tabText, tab === 'minta' && styles.tabTextActive]}>
+          style={[styles.tab, tab === "minta" && styles.tabActive]}
+          onPress={() => setTab("minta")}
+        >
+          <Text
+            style={[styles.tabText, tab === "minta" && styles.tabTextActive]}
+          >
             Minta Tolong
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, tab === 'bantu' && styles.tabActive]}
-          onPress={() => setTab('bantu')}>
-          <Text style={[styles.tabText, tab === 'bantu' && styles.tabTextActive]}>
+          style={[styles.tab, tab === "bantu" && styles.tabActive]}
+          onPress={() => setTab("bantu")}
+        >
+          <Text
+            style={[styles.tabText, tab === "bantu" && styles.tabTextActive]}
+          >
             Bantu Teman
           </Text>
         </TouchableOpacity>
@@ -197,21 +223,25 @@ export function TitipBeli({ userId }: { userId: string }) {
         refreshing={refreshing}
         onRefresh={() => load()}
         keyboardShouldPersistTaps="handled"
-        ListHeaderComponent={tab === 'minta' ? form : undefined}
+        ListHeaderComponent={tab === "minta" ? form : undefined}
         ListEmptyComponent={
           <Text style={styles.empty}>
-            {tab === 'minta'
-              ? 'Belum ada permintaan.'
-              : 'Belum ada permintaan teman yang bisa kamu bantu.'}
+            {tab === "minta"
+              ? "Belum ada permintaan."
+              : "Belum ada permintaan teman yang bisa kamu bantu."}
           </Text>
         }
         renderItem={({ item }) => {
           const punyaSaya = item.requester_id === userId;
           return (
             <View style={styles.card}>
-              <Text style={styles.status}>{STATUS_LABEL[item.status] ?? item.status}</Text>
+              <Text style={styles.status}>
+                {STATUS_LABEL[item.status] ?? item.status}
+              </Text>
               {!punyaSaya && (
-                <Text style={styles.meta}>Dari: {item.requester_nama ?? 'Teman'}</Text>
+                <Text style={styles.meta}>
+                  Dari: {item.requester_nama ?? "Teman"}
+                </Text>
               )}
               <Text style={styles.barang}>{item.barang}</Text>
               <Text style={styles.meta}>
@@ -220,46 +250,65 @@ export function TitipBeli({ userId }: { userId: string }) {
               <Text style={styles.upah}>Upah: {rupiah(item.upah)}</Text>
               <Text style={styles.meta}>Antar ke: {item.lokasi}</Text>
               {punyaSaya && item.helper_nama && (
-                <Text style={styles.meta}>Dibantu oleh: {item.helper_nama}</Text>
+                <Text style={styles.meta}>
+                  Dibantu oleh: {item.helper_nama}
+                </Text>
               )}
               <Text style={styles.meta}>
-                {new Date(item.created_at).toLocaleString('id-ID')}
+                {new Date(item.created_at).toLocaleString("id-ID")}
               </Text>
 
-              {punyaSaya && item.status === 'terbuka' && (
+              {item.status === "diambil" && (
+                <TouchableOpacity
+                  style={styles.chatBtn}
+                  onPress={() => setChat(item.id)}
+                >
+                  <Text style={styles.chatText}>Chat</Text>
+                </TouchableOpacity>
+              )}
+
+              {punyaSaya && item.status === "terbuka" && (
                 <TouchableOpacity
                   style={styles.dangerBtn}
                   onPress={() =>
-                    konfirmasi('Batalkan permintaan?', item.barang, 'batal_titipan', item.id)
-                  }>
+                    konfirmasi(
+                      "Batalkan permintaan?",
+                      item.barang,
+                      "batal_titipan",
+                      item.id,
+                    )
+                  }
+                >
                   <Text style={styles.dangerText}>Batalkan</Text>
                 </TouchableOpacity>
               )}
-              {punyaSaya && item.status === 'diambil' && (
+              {punyaSaya && item.status === "diambil" && (
                 <TouchableOpacity
                   style={styles.primaryBtn}
                   onPress={() =>
                     konfirmasi(
-                      'Barang sudah diterima?',
-                      'Pastikan kamu sudah menerima barang dan membayar temanmu.',
-                      'selesai_titipan',
-                      item.id
+                      "Barang sudah diterima?",
+                      "Pastikan kamu sudah menerima barang dan membayar temanmu.",
+                      "selesai_titipan",
+                      item.id,
                     )
-                  }>
+                  }
+                >
                   <Text style={styles.primaryText}>Barang sudah diterima</Text>
                 </TouchableOpacity>
               )}
-              {!punyaSaya && item.status === 'terbuka' && (
+              {!punyaSaya && item.status === "terbuka" && (
                 <TouchableOpacity
                   style={styles.primaryBtn}
                   onPress={() =>
                     konfirmasi(
-                      'Bantu belikan?',
-                      'Kamu akan membeli barang ini dan mengantarnya ke lokasi tujuan.',
-                      'ambil_titipan',
-                      item.id
+                      "Bantu belikan?",
+                      "Kamu akan membeli barang ini dan mengantarnya ke lokasi tujuan.",
+                      "ambil_titipan",
+                      item.id,
                     )
-                  }>
+                  }
+                >
                   <Text style={styles.primaryText}>Saya bantu belikan</Text>
                 </TouchableOpacity>
               )}
@@ -273,59 +322,92 @@ export function TitipBeli({ userId }: { userId: string }) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  tabs: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  tabs: { flexDirection: "row", gap: 8, marginBottom: 12 },
   tab: {
     flex: 1,
     padding: 10,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#C9D6F5',
-    alignItems: 'center',
+    borderColor: "#C9D6F5",
+    alignItems: "center",
   },
-  tabActive: { backgroundColor: '#2547D0', borderColor: '#2547D0' },
-  tabText: { color: '#0E1B5C', fontFamily: 'PlusJakartaSans_600SemiBold' },
-  tabTextActive: { color: '#fff' },
+  tabActive: { backgroundColor: "#2547D0", borderColor: "#2547D0" },
+  tabText: { color: "#0E1B5C", fontFamily: "PlusJakartaSans_600SemiBold" },
+  tabTextActive: { color: "#fff" },
   form: { gap: 8, marginBottom: 8 },
-  formTitle: { fontSize: 18, fontFamily: 'PlusJakartaSans_700Bold', color: '#0E1B5C', marginTop: 4 },
+  formTitle: {
+    fontSize: 18,
+    fontFamily: "PlusJakartaSans_700Bold",
+    color: "#0E1B5C",
+    marginTop: 4,
+  },
   input: {
     borderWidth: 1,
-    borderColor: '#C9D6F5',
+    borderColor: "#C9D6F5",
     borderRadius: 14,
     padding: 12,
     fontSize: 16,
-    color: '#0E1B5C',
-    backgroundColor: '#FFFFFF',
+    color: "#0E1B5C",
+    backgroundColor: "#FFFFFF",
   },
-  inputTall: { minHeight: 70, textAlignVertical: 'top' },
-  notice: { fontSize: 12, color: '#5B6785' },
-  empty: { textAlign: 'center', color: '#5B6785', marginTop: 24 },
+  inputTall: { minHeight: 70, textAlignVertical: "top" },
+  notice: { fontSize: 12, color: "#5B6785" },
+  empty: { textAlign: "center", color: "#5B6785", marginTop: 24 },
   card: {
     padding: 14,
     borderWidth: 1,
-    borderColor: '#DDE5F7',
+    borderColor: "#DDE5F7",
     borderRadius: 14,
     marginBottom: 10,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
-  status: { fontSize: 14, fontFamily: 'PlusJakartaSans_700Bold', color: '#c60', marginBottom: 6 },
-  barang: { fontSize: 16, fontFamily: 'PlusJakartaSans_600SemiBold', color: '#0E1B5C', marginBottom: 4 },
-  meta: { fontSize: 13, color: '#5B6785', marginTop: 2 },
-  upah: { fontSize: 14, fontFamily: 'PlusJakartaSans_700Bold', color: '#2547D0', marginTop: 2 },
+  status: {
+    fontSize: 14,
+    fontFamily: "PlusJakartaSans_700Bold",
+    color: "#c60",
+    marginBottom: 6,
+  },
+  barang: {
+    fontSize: 16,
+    fontFamily: "PlusJakartaSans_600SemiBold",
+    color: "#0E1B5C",
+    marginBottom: 4,
+  },
+  meta: { fontSize: 13, color: "#5B6785", marginTop: 2 },
+  upah: {
+    fontSize: 14,
+    fontFamily: "PlusJakartaSans_700Bold",
+    color: "#2547D0",
+    marginTop: 2,
+  },
   primaryBtn: {
-    backgroundColor: '#2547D0',
+    backgroundColor: "#2547D0",
     padding: 12,
     borderRadius: 14,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 10,
   },
-  primaryText: { color: '#fff', fontFamily: 'PlusJakartaSans_700Bold', fontSize: 15 },
+  primaryText: {
+    color: "#fff",
+    fontFamily: "PlusJakartaSans_700Bold",
+    fontSize: 15,
+  },
   dangerBtn: {
     borderWidth: 1,
-    borderColor: '#D92D20',
+    borderColor: "#D92D20",
     padding: 10,
     borderRadius: 14,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 10,
   },
-  dangerText: { color: '#D92D20', fontFamily: 'PlusJakartaSans_700Bold' },
+  dangerText: { color: "#D92D20", fontFamily: "PlusJakartaSans_700Bold" },
+  chatBtn: {
+    borderWidth: 1,
+    borderColor: "#2547D0",
+    padding: 10,
+    borderRadius: 14,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  chatText: { fontFamily: "PlusJakartaSans_700Bold", color: "#2547D0" },
 });
