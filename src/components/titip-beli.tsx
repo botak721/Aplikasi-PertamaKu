@@ -197,7 +197,7 @@ export function TitipBeli({ userId }: { userId: string }) {
         refreshing={refreshing}
         onRefresh={() => load()}
         keyboardShouldPersistTaps="handled"
-        ListHeaderComponent={tab === 'minta' ? form : null}
+        ListHeaderComponent={tab === 'minta' ? form : undefined}
         ListEmptyComponent={
           <Text style={styles.empty}>
             {tab === 'minta'
