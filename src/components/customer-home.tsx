@@ -18,7 +18,8 @@ import { TitipBeli } from "@/components/titip-beli";
 import { ChatList } from "@/components/chat-list";
 import { ChatRoom } from "@/components/chat-room";
 import { C, F } from "@/constants/kampusgo";
-import { RatingScreen } from '@/components/rating-screen';
+import { RatingScreen } from "@/components/rating-screen";
+import { CariScreen } from "@/components/cari-screen";
 
 type Merchant = { id: string; nama: string | null };
 type MenuItem = { id: string; nama: string; harga: number };
@@ -49,6 +50,13 @@ function Header({ title, children }: { title: string; children?: ReactNode }) {
 /* ---------------- Beranda ---------------- */
 
 const LAYANAN = [
+  {
+    key: "cari",
+    icon: "🔎",
+    judul: "Cari Kantin",
+    desc: "Terdekat, urut, dan filter",
+    aktif: true,
+  },
   {
     key: "kantin",
     icon: "🍜",
@@ -360,40 +368,39 @@ function MenuView({
 function ServiceScreen({
   layanan,
   userId,
+  initialMerchant,
   onBack,
   onOrdered,
 }: {
   layanan: string;
   userId: string;
+  initialMerchant?: Merchant | null;
   onBack: () => void;
   onOrdered: () => void;
 }) {
-  const [merchant, setMerchant] = useState<Merchant | null>(null);
-  const judul = layanan === "kantin" ? "Titip Kantin" : "Titip Beli";
+  const [merchant, setMerchant] = useState<Merchant | null>(initialMerchant ?? null);
+  const judul = layanan === 'kantin' ? 'Titip Kantin' : 'Titip Beli';
+
+  function kembali() {
+    if (merchant && !initialMerchant) setMerchant(null);
+    else onBack();
+  }
 
   return (
     <View style={styles.flex}>
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => (merchant ? setMerchant(null) : onBack())}
-        >
+        <TouchableOpacity onPress={kembali}>
           <Text style={styles.headerBack}>‹ Kembali</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {merchant ? (merchant.nama ?? "Penjual") : judul}
-        </Text>
-        {layanan === "kantin" && !merchant && (
+        <Text style={styles.headerTitle}>{merchant ? (merchant.nama ?? 'Penjual') : judul}</Text>
+        {layanan === 'kantin' && !merchant && (
           <Text style={styles.headerSub}>Pilih kantin atau warung</Text>
         )}
       </View>
       <View style={styles.serviceBody}>
-        {layanan === "kantin" ? (
+        {layanan === 'kantin' ? (
           merchant ? (
-            <MenuView
-              userId={userId}
-              merchant={merchant}
-              onOrdered={onOrdered}
-            />
+            <MenuView userId={userId} merchant={merchant} onOrdered={onOrdered} />
           ) : (
             <MerchantList onPick={setMerchant} />
           )
@@ -436,7 +443,9 @@ type Row = {
 };
 
 function toPt(lat: unknown, lng: unknown): Pt | null {
-  return typeof lat === 'number' && typeof lng === 'number' ? { lat, lng } : null;
+  return typeof lat === "number" && typeof lng === "number"
+    ? { lat, lng }
+    : null;
 }
 
 function PesananTab({
@@ -457,36 +466,42 @@ function PesananTab({
       if (!silent) setRefreshing(true);
       const [o, t, r] = await Promise.all([
         supabase
-          .from('orders')
+          .from("orders")
           .select(
-            'id, merchant_nama, total, status, created_at, dest_lat, dest_lng, merchant_lat, merchant_lng, order_items(jumlah)'
+            "id, merchant_nama, total, status, created_at, dest_lat, dest_lng, merchant_lat, merchant_lng, order_items(jumlah)",
           )
-          .eq('customer_id', userId)
-          .order('created_at', { ascending: false }),
+          .eq("customer_id", userId)
+          .order("created_at", { ascending: false }),
         supabase
-          .from('titip_requests')
-          .select('id, barang, estimasi_harga, upah, status, created_at')
-          .eq('requester_id', userId)
-          .order('created_at', { ascending: false }),
-        supabase.from('ratings').select('order_id').eq('customer_id', userId),
+          .from("titip_requests")
+          .select("id, barang, estimasi_harga, upah, status, created_at")
+          .eq("requester_id", userId)
+          .order("created_at", { ascending: false }),
+        supabase.from("ratings").select("order_id").eq("customer_id", userId),
       ]);
       const err = o.error ?? t.error ?? r.error;
       if (err) {
-        if (!silent) notify('Gagal memuat pesanan', err.message);
+        if (!silent) notify("Gagal memuat pesanan", err.message);
       } else {
-        const sudah = new Set(((r.data ?? []) as any[]).map((x) => x.order_id as string));
+        const sudah = new Set(
+          ((r.data ?? []) as any[]).map((x) => x.order_id as string),
+        );
         const orderRows: Row[] = ((o.data ?? []) as any[]).map((x) => ({
-          key: 'o' + x.id,
+          key: "o" + x.id,
           at: x.created_at,
-          jenis: 'Titip Kantin',
+          jenis: "Titip Kantin",
           label: ORDER_LABEL[x.status] ?? x.status,
           status: x.status,
           kategori:
-            x.status === 'selesai' ? 'selesai' : x.status === 'dibatalkan' ? 'dibatalkan' : 'aktif',
+            x.status === "selesai"
+              ? "selesai"
+              : x.status === "dibatalkan"
+                ? "dibatalkan"
+                : "aktif",
           ringkas: `${tgl(x.created_at)} · ${(x.order_items ?? []).reduce(
             (a: number, i: any) => a + i.jumlah,
-            0
-          )} item · ${x.merchant_nama ?? 'Penjual'}`,
+            0,
+          )} item · ${x.merchant_nama ?? "Penjual"}`,
           total: x.total,
           dinilai: sudah.has(x.id),
           order: {
@@ -496,23 +511,29 @@ function PesananTab({
           },
         }));
         const titipRows: Row[] = ((t.data ?? []) as any[]).map((x) => ({
-          key: 't' + x.id,
+          key: "t" + x.id,
           at: x.created_at,
-          jenis: 'Titip Beli',
+          jenis: "Titip Beli",
           label: TITIP_LABEL[x.status] ?? x.status,
           status: x.status,
           kategori:
-            x.status === 'selesai' ? 'selesai' : x.status === 'dibatalkan' ? 'dibatalkan' : 'aktif',
+            x.status === "selesai"
+              ? "selesai"
+              : x.status === "dibatalkan"
+                ? "dibatalkan"
+                : "aktif",
           ringkas: `${tgl(x.created_at)} · ${x.barang}`,
           total: x.estimasi_harga + x.upah,
           dinilai: true,
           order: null,
         }));
-        setRows([...orderRows, ...titipRows].sort((a, b) => (a.at < b.at ? 1 : -1)));
+        setRows(
+          [...orderRows, ...titipRows].sort((a, b) => (a.at < b.at ? 1 : -1)),
+        );
       }
       setRefreshing(false);
     },
-    [userId]
+    [userId],
   );
 
   useEffect(() => {
@@ -523,9 +544,9 @@ function PesananTab({
 
   const shown = rows.filter((x) => x.kategori === filter);
   const FILTERS: { key: Filter; label: string }[] = [
-    { key: 'aktif', label: 'Aktif' },
-    { key: 'selesai', label: 'Selesai' },
-    { key: 'dibatalkan', label: 'Dibatalkan' },
+    { key: "aktif", label: "Aktif" },
+    { key: "selesai", label: "Selesai" },
+    { key: "dibatalkan", label: "Dibatalkan" },
   ];
 
   return (
@@ -535,9 +556,19 @@ function PesananTab({
           {FILTERS.map((f) => (
             <TouchableOpacity
               key={f.key}
-              style={[styles.pill, filter === f.key ? styles.pillOn : styles.pillOff]}
-              onPress={() => setFilter(f.key)}>
-              <Text style={filter === f.key ? styles.pillTextOn : styles.pillTextOff}>{f.label}</Text>
+              style={[
+                styles.pill,
+                filter === f.key ? styles.pillOn : styles.pillOff,
+              ]}
+              onPress={() => setFilter(f.key)}
+            >
+              <Text
+                style={
+                  filter === f.key ? styles.pillTextOn : styles.pillTextOff
+                }
+              >
+                {f.label}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -549,7 +580,9 @@ function PesananTab({
         keyExtractor={(x) => x.key}
         refreshing={refreshing}
         onRefresh={() => load()}
-        ListEmptyComponent={<Text style={styles.empty}>Belum ada pesanan di sini.</Text>}
+        ListEmptyComponent={
+          <Text style={styles.empty}>Belum ada pesanan di sini.</Text>
+        }
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={styles.cardTop}>
@@ -558,19 +591,22 @@ function PesananTab({
             </View>
             <Text style={styles.muted}>{item.ringkas}</Text>
             <Text style={styles.totalText}>{rupiah(item.total)}</Text>
-            {item.order && item.status === 'diantar' && (
+            {item.order && item.status === "diantar" && (
               <TrackOrder
                 orderId={item.order.id}
                 dest={item.order.dest}
                 merchant={item.order.merchant}
               />
             )}
-            {item.order && item.status === 'selesai' && !item.dinilai && (
-              <TouchableOpacity style={styles.outlineBtn} onPress={() => onRate(item.order!.id)}>
+            {item.order && item.status === "selesai" && !item.dinilai && (
+              <TouchableOpacity
+                style={styles.outlineBtn}
+                onPress={() => onRate(item.order!.id)}
+              >
                 <Text style={styles.outlineText}>Beri nilai driver</Text>
               </TouchableOpacity>
             )}
-            {item.order && item.status === 'selesai' && item.dinilai && (
+            {item.order && item.status === "selesai" && item.dinilai && (
               <Text style={styles.muted}>Sudah dinilai ✓</Text>
             )}
           </View>
@@ -734,6 +770,15 @@ export function CustomerHome({ userId, nama }: { userId: string; nama: string })
   const [pesananFilter, setPesananFilter] = useState<Filter>('aktif');
   const [room, setRoom] = useState<{ type: 'order' | 'titip'; id: string } | null>(null);
   const [rating, setRating] = useState<string | null>(null);
+  const [cari, setCari] = useState(false);
+  const [toko, setToko] = useState<Merchant | null>(null);
+
+  function selesaiPesan() {
+    setLayanan(null);
+    setToko(null);
+    setPesananFilter('aktif');
+    setTab('pesanan');
+  }
 
   if (rating) {
     return <RatingScreen orderId={rating} onDone={() => setRating(null)} />;
@@ -750,17 +795,37 @@ export function CustomerHome({ userId, nama }: { userId: string; nama: string })
     );
   }
 
+  if (toko) {
+    return (
+      <ServiceScreen
+        layanan="kantin"
+        userId={userId}
+        initialMerchant={toko}
+        onBack={() => setToko(null)}
+        onOrdered={selesaiPesan}
+      />
+    );
+  }
+
+  if (cari) {
+    return (
+      <CariScreen
+        onBack={() => setCari(false)}
+        onPick={(m) => {
+          setCari(false);
+          setToko(m);
+        }}
+      />
+    );
+  }
+
   if (layanan) {
     return (
       <ServiceScreen
         layanan={layanan}
         userId={userId}
         onBack={() => setLayanan(null)}
-        onOrdered={() => {
-          setLayanan(null);
-          setPesananFilter('aktif');
-          setTab('pesanan');
-        }}
+        onOrdered={selesaiPesan}
       />
     );
   }
@@ -768,7 +833,12 @@ export function CustomerHome({ userId, nama }: { userId: string; nama: string })
   return (
     <View style={styles.flex}>
       <View style={styles.flex}>
-        {tab === 'beranda' && <Beranda nama={nama} onPick={setLayanan} />}
+        {tab === 'beranda' && (
+          <Beranda
+            nama={nama}
+            onPick={(key) => (key === 'cari' ? setCari(true) : setLayanan(key))}
+          />
+        )}
         {tab === 'pesanan' && (
           <PesananTab
             key={pesananFilter}
