@@ -20,6 +20,7 @@ import { ChatRoom } from "@/components/chat-room";
 import { C, F } from "@/constants/kampusgo";
 import { RatingScreen } from "@/components/rating-screen";
 import { CariScreen } from "@/components/cari-screen";
+import { PromoScreen } from '@/components/promo-screen';
 
 type Merchant = { id: string; nama: string | null };
 type MenuItem = { id: string; nama: string; harga: number };
@@ -104,14 +105,14 @@ const LAYANAN = [
 function Beranda({
   nama,
   onPick,
+  onPromo,
 }: {
   nama: string;
   onPick: (key: string) => void;
+  onPromo: () => void;
 }) {
-  const [q, setQ] = useState("");
-  const list = LAYANAN.filter((l) =>
-    l.judul.toLowerCase().includes(q.trim().toLowerCase()),
-  );
+  const [q, setQ] = useState('');
+  const list = LAYANAN.filter((l) => l.judul.toLowerCase().includes(q.trim().toLowerCase()));
 
   return (
     <View style={styles.flex}>
@@ -133,29 +134,20 @@ function Beranda({
             <TouchableOpacity
               key={l.key}
               style={[styles.service, !l.aktif && styles.serviceOff]}
-              onPress={() =>
-                l.aktif ? onPick(l.key) : notify(l.judul, "Segera hadir.")
-              }
-            >
+              onPress={() => (l.aktif ? onPick(l.key) : notify(l.judul, 'Segera hadir.'))}>
               <View style={styles.serviceIcon}>
                 <Text style={styles.serviceEmoji}>{l.icon}</Text>
               </View>
               <Text style={styles.serviceTitle}>{l.judul}</Text>
-              <Text style={styles.muted}>
-                {l.aktif ? l.desc : "Segera hadir"}
-              </Text>
+              <Text style={styles.muted}>{l.aktif ? l.desc : 'Segera hadir'}</Text>
             </TouchableOpacity>
           ))}
         </View>
-        {list.length === 0 && (
-          <Text style={styles.empty}>Layanan tidak ditemukan.</Text>
-        )}
-        <View style={styles.promo}>
-          <Text style={styles.promoTitle}>Promo kantin</Text>
-          <Text style={styles.promoText}>
-            Voucher khusus mahasiswa segera hadir di sini.
-          </Text>
-        </View>
+        {list.length === 0 && <Text style={styles.empty}>Layanan tidak ditemukan.</Text>}
+        <TouchableOpacity style={styles.promo} onPress={onPromo}>
+          <Text style={styles.promoTitle}>Promo & Voucher</Text>
+          <Text style={styles.promoText}>Lihat voucher khusus mahasiswa dan pakai kode promo.</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -202,30 +194,37 @@ function MerchantList({ onPick }: { onPick: (m: Merchant) => void }) {
 function MenuView({
   userId,
   merchant,
+  kode,
+  onKode,
   onOrdered,
 }: {
   userId: string;
   merchant: Merchant;
+  kode: string;
+  onKode: (k: string) => void;
   onOrdered: () => void;
 }) {
   void userId;
   const [items, setItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<Record<string, number>>({});
-  const [alamat, setAlamat] = useState("");
+  const [alamat, setAlamat] = useState('');
   const [sending, setSending] = useState(false);
   const [coords, setCoords] = useState<Pt | null>(null);
   const [locating, setLocating] = useState(false);
+  const [kodeInput, setKodeInput] = useState('');
+  const [promo, setPromo] = useState<{ diskon: number; nama: string } | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
-      .from("menu_items")
-      .select("id, nama, harga")
-      .eq("merchant_id", merchant.id)
-      .eq("tersedia", true)
-      .order("nama")
+      .from('menu_items')
+      .select('id, nama, harga')
+      .eq('merchant_id', merchant.id)
+      .eq('tersedia', true)
+      .order('nama')
       .then(({ data, error }) => {
-        if (error) notify("Gagal memuat menu", error.message);
+        if (error) notify('Gagal memuat menu', error.message);
         else setItems((data ?? []) as MenuItem[]);
         setLoading(false);
       });
@@ -233,9 +232,32 @@ function MenuView({
 
   const total = useMemo(
     () => items.reduce((sum, it) => sum + it.harga * (cart[it.id] ?? 0), 0),
-    [items, cart],
+    [items, cart]
   );
   const jumlahItem = Object.values(cart).reduce((a, b) => a + b, 0);
+
+  useEffect(() => {
+    if (!kode || total <= 0) {
+      setPromo(null);
+      setPromoError(null);
+      return;
+    }
+    let batal = false;
+    supabase.rpc('cek_voucher', { p_kode: kode, p_subtotal: total }).then(({ data, error }) => {
+      if (batal) return;
+      if (error) {
+        setPromo(null);
+        setPromoError(error.message);
+      } else {
+        const d = data as { diskon: number; nama: string };
+        setPromo({ diskon: d.diskon, nama: d.nama });
+        setPromoError(null);
+      }
+    });
+    return () => {
+      batal = true;
+    };
+  }, [kode, total]);
 
   function ubah(id: string, delta: number) {
     setCart((c) => {
@@ -254,21 +276,32 @@ function MenuView({
     if (c) setCoords(c);
   }
 
+  function pasangKode() {
+    const k = kodeInput.trim().toUpperCase();
+    if (!k) return;
+    onKode(k);
+    setKodeInput('');
+  }
+
   async function pesan() {
     if (jumlahItem === 0) {
-      notify("Keranjang kosong", "Pilih menu dulu ya.");
+      notify('Keranjang kosong', 'Pilih menu dulu ya.');
       return;
     }
     if (!coords) {
-      notify("Lokasi belum ada", 'Tekan "Gunakan lokasi saya sekarang" dulu.');
+      notify('Lokasi belum ada', 'Tekan "Gunakan lokasi saya sekarang" dulu.');
       return;
     }
     if (!alamat.trim()) {
-      notify("Alamat kosong", "Isi gedung dan ruang tujuan dulu.");
+      notify('Alamat kosong', 'Isi gedung dan ruang tujuan dulu.');
+      return;
+    }
+    if (kode && promoError) {
+      notify('Promo belum bisa dipakai', promoError);
       return;
     }
     setSending(true);
-    const { error } = await supabase.rpc("buat_pesanan", {
+    const { error } = await supabase.rpc('buat_pesanan', {
       p_merchant_id: merchant.id,
       p_alamat: alamat.trim(),
       p_items: items
@@ -276,15 +309,19 @@ function MenuView({
         .map((it) => ({ menu_id: it.id, jumlah: cart[it.id] })),
       p_lat: coords.lat,
       p_lng: coords.lng,
+      p_kode: kode || null,
     });
     setSending(false);
     if (error) {
-      notify("Gagal membuat pesanan", error.message);
+      notify('Gagal membuat pesanan', error.message);
       return;
     }
-    notify("Pesanan terkirim!", "Penjual akan segera memprosesnya.");
+    onKode('');
+    notify('Pesanan terkirim!', 'Penjual akan segera memprosesnya.');
     onOrdered();
   }
+
+  const bayar = Math.max(0, total - (promo?.diskon ?? 0));
 
   return (
     <View style={styles.flex}>
@@ -295,9 +332,7 @@ function MenuView({
           style={styles.flex}
           data={items}
           keyExtractor={(it) => it.id}
-          ListEmptyComponent={
-            <Text style={styles.empty}>Belum ada menu tersedia.</Text>
-          }
+          ListEmptyComponent={<Text style={styles.empty}>Belum ada menu tersedia.</Text>}
           renderItem={({ item }) => (
             <View style={styles.row}>
               <View style={styles.flex}>
@@ -305,17 +340,11 @@ function MenuView({
                 <Text style={styles.price}>{rupiah(item.harga)}</Text>
               </View>
               <View style={styles.qtyBox}>
-                <TouchableOpacity
-                  style={styles.qtyBtn}
-                  onPress={() => ubah(item.id, -1)}
-                >
+                <TouchableOpacity style={styles.qtyBtn} onPress={() => ubah(item.id, -1)}>
                   <Text style={styles.qtyBtnText}>−</Text>
                 </TouchableOpacity>
                 <Text style={styles.qty}>{cart[item.id] ?? 0}</Text>
-                <TouchableOpacity
-                  style={styles.qtyBtn}
-                  onPress={() => ubah(item.id, 1)}
-                >
+                <TouchableOpacity style={styles.qtyBtn} onPress={() => ubah(item.id, 1)}>
                   <Text style={styles.qtyBtnText}>+</Text>
                 </TouchableOpacity>
               </View>
@@ -325,18 +354,46 @@ function MenuView({
       )}
 
       <View style={styles.checkout}>
-        <TouchableOpacity
-          style={styles.outlineBtn}
-          onPress={pakaiLokasi}
-          disabled={locating}
-        >
+        <View style={styles.promoRow}>
+          {kode ? (
+            <View style={styles.promoChip}>
+              <Text style={styles.promoChipText}>Promo {kode}</Text>
+              <TouchableOpacity onPress={() => onKode('')}>
+                <Text style={styles.promoLepas}>Lepas</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <>
+              <TextInput
+                style={[styles.input, styles.flex]}
+                placeholder="Kode promo"
+                placeholderTextColor={C.muted}
+                autoCapitalize="characters"
+                value={kodeInput}
+                onChangeText={setKodeInput}
+              />
+              <TouchableOpacity style={styles.pakaiBtn} onPress={pasangKode}>
+                <Text style={styles.pakaiText}>Pakai</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+        {promo && (
+          <Text style={styles.diskonText}>
+            Hemat {rupiah(promo.diskon)} dengan {promo.nama}
+          </Text>
+        )}
+        {kode !== '' && total <= 0 && (
+          <Text style={styles.muted}>Pilih menu untuk melihat potongan promo.</Text>
+        )}
+        {promoError && <Text style={styles.promoErr}>{promoError}</Text>}
+
+        <TouchableOpacity style={styles.outlineBtn} onPress={pakaiLokasi} disabled={locating}>
           {locating ? (
             <ActivityIndicator color={C.primary} />
           ) : (
             <Text style={styles.outlineText}>
-              {coords
-                ? "Lokasi antar tersimpan ✓ (ketuk untuk perbarui)"
-                : "Gunakan lokasi saya sekarang"}
+              {coords ? 'Lokasi antar tersimpan ✓ (ketuk untuk perbarui)' : 'Gunakan lokasi saya sekarang'}
             </Text>
           )}
         </TouchableOpacity>
@@ -347,16 +404,12 @@ function MenuView({
           value={alamat}
           onChangeText={setAlamat}
         />
-        <TouchableOpacity
-          style={styles.primaryBtn}
-          onPress={pesan}
-          disabled={sending}
-        >
+        <TouchableOpacity style={styles.primaryBtn} onPress={pesan} disabled={sending}>
           {sending ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.primaryText}>
-              Pesan ({jumlahItem} item) • {rupiah(total)}
+              Pesan ({jumlahItem} item) • {rupiah(bayar)}
             </Text>
           )}
         </TouchableOpacity>
@@ -369,12 +422,16 @@ function ServiceScreen({
   layanan,
   userId,
   initialMerchant,
+  kode,
+  onKode,
   onBack,
   onOrdered,
 }: {
   layanan: string;
   userId: string;
   initialMerchant?: Merchant | null;
+  kode: string;
+  onKode: (k: string) => void;
   onBack: () => void;
   onOrdered: () => void;
 }) {
@@ -400,7 +457,13 @@ function ServiceScreen({
       <View style={styles.serviceBody}>
         {layanan === 'kantin' ? (
           merchant ? (
-            <MenuView userId={userId} merchant={merchant} onOrdered={onOrdered} />
+            <MenuView
+              userId={userId}
+              merchant={merchant}
+              kode={kode}
+              onKode={onKode}
+              onOrdered={onOrdered}
+            />
           ) : (
             <MerchantList onPick={setMerchant} />
           )
@@ -772,6 +835,8 @@ export function CustomerHome({ userId, nama }: { userId: string; nama: string })
   const [rating, setRating] = useState<string | null>(null);
   const [cari, setCari] = useState(false);
   const [toko, setToko] = useState<Merchant | null>(null);
+  const [promoOpen, setPromoOpen] = useState(false);
+  const [kodePromo, setKodePromo] = useState('');
 
   function selesaiPesan() {
     setLayanan(null);
@@ -795,12 +860,27 @@ export function CustomerHome({ userId, nama }: { userId: string; nama: string })
     );
   }
 
+  if (promoOpen) {
+    return (
+      <PromoScreen
+        kode={kodePromo}
+        onBack={() => setPromoOpen(false)}
+        onPakai={(k) => {
+          setKodePromo(k);
+          setPromoOpen(false);
+        }}
+      />
+    );
+  }
+
   if (toko) {
     return (
       <ServiceScreen
         layanan="kantin"
         userId={userId}
         initialMerchant={toko}
+        kode={kodePromo}
+        onKode={setKodePromo}
         onBack={() => setToko(null)}
         onOrdered={selesaiPesan}
       />
@@ -824,6 +904,8 @@ export function CustomerHome({ userId, nama }: { userId: string; nama: string })
       <ServiceScreen
         layanan={layanan}
         userId={userId}
+        kode={kodePromo}
+        onKode={setKodePromo}
         onBack={() => setLayanan(null)}
         onOrdered={selesaiPesan}
       />
@@ -837,6 +919,7 @@ export function CustomerHome({ userId, nama }: { userId: string; nama: string })
           <Beranda
             nama={nama}
             onPick={(key) => (key === 'cari' ? setCari(true) : setLayanan(key))}
+            onPromo={() => setPromoOpen(true)}
           />
         )}
         {tab === 'pesanan' && (
@@ -1017,6 +1100,30 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   outlineText: { fontFamily: F.bold, color: C.primary },
+    promoRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  promoChip: {
+    flex: 1,
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: C.soft,
+  },
+  promoChipText: { fontFamily: F.xbold, fontSize: 14, color: C.primary },
+  promoLepas: { fontFamily: F.bold, fontSize: 13, color: C.danger },
+  pakaiBtn: {
+    minHeight: 48,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    backgroundColor: C.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pakaiText: { fontFamily: F.xbold, fontSize: 14, color: '#fff' },
+  diskonText: { fontFamily: F.bold, fontSize: 13, color: C.primary },
+  promoErr: { fontFamily: F.semi, fontSize: 13, color: C.danger },
 
   pillRow: { flexDirection: "row", gap: 8 },
   pill: {
