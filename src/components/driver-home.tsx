@@ -14,6 +14,7 @@ import { ChatRoom } from "@/components/chat-room";
 
 type Item = { nama: string; jumlah: number };
 type Order = {
+  metode_bayar: string;
   id: string;
   merchant_nama: string | null;
   alamat: string;
@@ -32,7 +33,7 @@ function rupiah(n: number) {
 }
 
 const SELECT =
-  "id, merchant_nama, alamat, total, status, created_at, merchant_lat, merchant_lng, dest_lat, dest_lng, order_items(nama, jumlah)";
+  "id, merchant_nama, alamat, total, status, created_at, metode_bayar, merchant_lat, merchant_lng, dest_lat, dest_lng, order_items(nama, jumlah)";
 
 export function DriverHome({ userId, nama }: { userId: string; nama: string }) {
   const [tab, setTab] = useState<"tersedia" | "saya">("tersedia");
@@ -229,6 +230,11 @@ export function DriverHome({ userId, nama }: { userId: string; nama: string }) {
             </View>
             <Text style={styles.total}>
               Total pesanan: {rupiah(item.total)}
+              <Text style={styles.meta}>
+                {item.metode_bayar === "saldo"
+                  ? "Sudah lunas lewat Saldo KampusGo, jangan tagih tunai"
+                  : `Tagih tunai ke customer: ${rupiah(item.total)}`}
+              </Text>
             </Text>
             <Text style={styles.meta}>
               {new Date(item.created_at).toLocaleString("id-ID")}
