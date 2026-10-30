@@ -18,6 +18,7 @@ import { TitipBeli } from "@/components/titip-beli";
 import { ChatList } from "@/components/chat-list";
 import { ChatRoom } from "@/components/chat-room";
 import { C, F } from "@/constants/kampusgo";
+import { RatingScreen } from '@/components/rating-screen';
 
 type Merchant = { id: string; nama: string | null };
 type MenuItem = { id: string; nama: string; harga: number };
@@ -430,16 +431,23 @@ type Row = {
   kategori: Filter;
   ringkas: string;
   total: number;
+  dinilai: boolean;
   order: { id: string; dest: Pt | null; merchant: Pt | null } | null;
 };
 
 function toPt(lat: unknown, lng: unknown): Pt | null {
-  return typeof lat === "number" && typeof lng === "number"
-    ? { lat, lng }
-    : null;
+  return typeof lat === 'number' && typeof lng === 'number' ? { lat, lng } : null;
 }
 
-function PesananTab({ userId, initial }: { userId: string; initial: Filter }) {
+function PesananTab({
+  userId,
+  initial,
+  onRate,
+}: {
+  userId: string;
+  initial: Filter;
+  onRate: (orderId: string) => void;
+}) {
   const [filter, setFilter] = useState<Filter>(initial);
   const [rows, setRows] = useState<Row[]>([]);
   const [refreshing, setRefreshing] = useState(true);
@@ -447,41 +455,40 @@ function PesananTab({ userId, initial }: { userId: string; initial: Filter }) {
   const load = useCallback(
     async (silent = false) => {
       if (!silent) setRefreshing(true);
-      const [o, t] = await Promise.all([
+      const [o, t, r] = await Promise.all([
         supabase
-          .from("orders")
+          .from('orders')
           .select(
-            "id, merchant_nama, total, status, created_at, dest_lat, dest_lng, merchant_lat, merchant_lng, order_items(jumlah)",
+            'id, merchant_nama, total, status, created_at, dest_lat, dest_lng, merchant_lat, merchant_lng, order_items(jumlah)'
           )
-          .eq("customer_id", userId)
-          .order("created_at", { ascending: false }),
+          .eq('customer_id', userId)
+          .order('created_at', { ascending: false }),
         supabase
-          .from("titip_requests")
-          .select("id, barang, estimasi_harga, upah, status, created_at")
-          .eq("requester_id", userId)
-          .order("created_at", { ascending: false }),
+          .from('titip_requests')
+          .select('id, barang, estimasi_harga, upah, status, created_at')
+          .eq('requester_id', userId)
+          .order('created_at', { ascending: false }),
+        supabase.from('ratings').select('order_id').eq('customer_id', userId),
       ]);
-      const err = o.error ?? t.error;
+      const err = o.error ?? t.error ?? r.error;
       if (err) {
-        if (!silent) notify("Gagal memuat pesanan", err.message);
+        if (!silent) notify('Gagal memuat pesanan', err.message);
       } else {
+        const sudah = new Set(((r.data ?? []) as any[]).map((x) => x.order_id as string));
         const orderRows: Row[] = ((o.data ?? []) as any[]).map((x) => ({
-          key: "o" + x.id,
+          key: 'o' + x.id,
           at: x.created_at,
-          jenis: "Titip Kantin",
+          jenis: 'Titip Kantin',
           label: ORDER_LABEL[x.status] ?? x.status,
           status: x.status,
           kategori:
-            x.status === "selesai"
-              ? "selesai"
-              : x.status === "dibatalkan"
-                ? "dibatalkan"
-                : "aktif",
+            x.status === 'selesai' ? 'selesai' : x.status === 'dibatalkan' ? 'dibatalkan' : 'aktif',
           ringkas: `${tgl(x.created_at)} · ${(x.order_items ?? []).reduce(
             (a: number, i: any) => a + i.jumlah,
-            0,
-          )} item · ${x.merchant_nama ?? "Penjual"}`,
+            0
+          )} item · ${x.merchant_nama ?? 'Penjual'}`,
           total: x.total,
+          dinilai: sudah.has(x.id),
           order: {
             id: x.id,
             dest: toPt(x.dest_lat, x.dest_lng),
@@ -489,28 +496,23 @@ function PesananTab({ userId, initial }: { userId: string; initial: Filter }) {
           },
         }));
         const titipRows: Row[] = ((t.data ?? []) as any[]).map((x) => ({
-          key: "t" + x.id,
+          key: 't' + x.id,
           at: x.created_at,
-          jenis: "Titip Beli",
+          jenis: 'Titip Beli',
           label: TITIP_LABEL[x.status] ?? x.status,
           status: x.status,
           kategori:
-            x.status === "selesai"
-              ? "selesai"
-              : x.status === "dibatalkan"
-                ? "dibatalkan"
-                : "aktif",
+            x.status === 'selesai' ? 'selesai' : x.status === 'dibatalkan' ? 'dibatalkan' : 'aktif',
           ringkas: `${tgl(x.created_at)} · ${x.barang}`,
           total: x.estimasi_harga + x.upah,
+          dinilai: true,
           order: null,
         }));
-        setRows(
-          [...orderRows, ...titipRows].sort((a, b) => (a.at < b.at ? 1 : -1)),
-        );
+        setRows([...orderRows, ...titipRows].sort((a, b) => (a.at < b.at ? 1 : -1)));
       }
       setRefreshing(false);
     },
-    [userId],
+    [userId]
   );
 
   useEffect(() => {
@@ -519,11 +521,11 @@ function PesananTab({ userId, initial }: { userId: string; initial: Filter }) {
     return () => clearInterval(timer);
   }, [load]);
 
-  const shown = rows.filter((r) => r.kategori === filter);
+  const shown = rows.filter((x) => x.kategori === filter);
   const FILTERS: { key: Filter; label: string }[] = [
-    { key: "aktif", label: "Aktif" },
-    { key: "selesai", label: "Selesai" },
-    { key: "dibatalkan", label: "Dibatalkan" },
+    { key: 'aktif', label: 'Aktif' },
+    { key: 'selesai', label: 'Selesai' },
+    { key: 'dibatalkan', label: 'Dibatalkan' },
   ];
 
   return (
@@ -533,19 +535,9 @@ function PesananTab({ userId, initial }: { userId: string; initial: Filter }) {
           {FILTERS.map((f) => (
             <TouchableOpacity
               key={f.key}
-              style={[
-                styles.pill,
-                filter === f.key ? styles.pillOn : styles.pillOff,
-              ]}
-              onPress={() => setFilter(f.key)}
-            >
-              <Text
-                style={
-                  filter === f.key ? styles.pillTextOn : styles.pillTextOff
-                }
-              >
-                {f.label}
-              </Text>
+              style={[styles.pill, filter === f.key ? styles.pillOn : styles.pillOff]}
+              onPress={() => setFilter(f.key)}>
+              <Text style={filter === f.key ? styles.pillTextOn : styles.pillTextOff}>{f.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -554,12 +546,10 @@ function PesananTab({ userId, initial }: { userId: string; initial: Filter }) {
         style={styles.flex}
         contentContainerStyle={styles.body}
         data={shown}
-        keyExtractor={(r) => r.key}
+        keyExtractor={(x) => x.key}
         refreshing={refreshing}
         onRefresh={() => load()}
-        ListEmptyComponent={
-          <Text style={styles.empty}>Belum ada pesanan di sini.</Text>
-        }
+        ListEmptyComponent={<Text style={styles.empty}>Belum ada pesanan di sini.</Text>}
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={styles.cardTop}>
@@ -568,12 +558,20 @@ function PesananTab({ userId, initial }: { userId: string; initial: Filter }) {
             </View>
             <Text style={styles.muted}>{item.ringkas}</Text>
             <Text style={styles.totalText}>{rupiah(item.total)}</Text>
-            {item.order && item.status === "diantar" && (
+            {item.order && item.status === 'diantar' && (
               <TrackOrder
                 orderId={item.order.id}
                 dest={item.order.dest}
                 merchant={item.order.merchant}
               />
+            )}
+            {item.order && item.status === 'selesai' && !item.dinilai && (
+              <TouchableOpacity style={styles.outlineBtn} onPress={() => onRate(item.order!.id)}>
+                <Text style={styles.outlineText}>Beri nilai driver</Text>
+              </TouchableOpacity>
+            )}
+            {item.order && item.status === 'selesai' && item.dinilai && (
+              <Text style={styles.muted}>Sudah dinilai ✓</Text>
             )}
           </View>
         )}
@@ -730,20 +728,16 @@ function BottomNav({
   );
 }
 
-export function CustomerHome({
-  userId,
-  nama,
-}: {
-  userId: string;
-  nama: string;
-}) {
-  const [tab, setTab] = useState<Tab>("beranda");
+export function CustomerHome({ userId, nama }: { userId: string; nama: string }) {
+  const [tab, setTab] = useState<Tab>('beranda');
   const [layanan, setLayanan] = useState<string | null>(null);
-  const [pesananFilter, setPesananFilter] = useState<Filter>("aktif");
-  const [room, setRoom] = useState<{
-    type: "order" | "titip";
-    id: string;
-  } | null>(null);
+  const [pesananFilter, setPesananFilter] = useState<Filter>('aktif');
+  const [room, setRoom] = useState<{ type: 'order' | 'titip'; id: string } | null>(null);
+  const [rating, setRating] = useState<string | null>(null);
+
+  if (rating) {
+    return <RatingScreen orderId={rating} onDone={() => setRating(null)} />;
+  }
 
   if (room) {
     return (
@@ -764,8 +758,8 @@ export function CustomerHome({
         onBack={() => setLayanan(null)}
         onOrdered={() => {
           setLayanan(null);
-          setPesananFilter("aktif");
-          setTab("pesanan");
+          setPesananFilter('aktif');
+          setTab('pesanan');
         }}
       />
     );
@@ -774,27 +768,25 @@ export function CustomerHome({
   return (
     <View style={styles.flex}>
       <View style={styles.flex}>
-        {tab === "beranda" && <Beranda nama={nama} onPick={setLayanan} />}
-        {tab === "pesanan" && (
+        {tab === 'beranda' && <Beranda nama={nama} onPick={setLayanan} />}
+        {tab === 'pesanan' && (
           <PesananTab
             key={pesananFilter}
             userId={userId}
             initial={pesananFilter}
+            onRate={setRating}
           />
         )}
-        {tab === "chat" && (
-          <ChatList
-            userId={userId}
-            onOpen={(type, id) => setRoom({ type, id })}
-          />
+        {tab === 'chat' && (
+          <ChatList userId={userId} onOpen={(type, id) => setRoom({ type, id })} />
         )}
-        {tab === "akun" && (
+        {tab === 'akun' && (
           <AkunTab
             userId={userId}
             nama={nama}
             onRiwayat={() => {
-              setPesananFilter("selesai");
-              setTab("pesanan");
+              setPesananFilter('selesai');
+              setTab('pesanan');
             }}
           />
         )}
