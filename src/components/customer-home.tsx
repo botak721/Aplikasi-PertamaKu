@@ -20,8 +20,9 @@ import { ChatRoom } from "@/components/chat-room";
 import { C, F } from "@/constants/kampusgo";
 import { RatingScreen } from "@/components/rating-screen";
 import { CariScreen } from "@/components/cari-screen";
-import { PromoScreen } from '@/components/promo-screen';
-import { DompetScreen } from '@/components/dompet-screen';
+import { PromoScreen } from "@/components/promo-screen";
+import { DompetScreen } from "@/components/dompet-screen";
+import { TemanBelajarScreen } from "@/components/teman-belajar";
 
 type Merchant = { id: string; nama: string | null };
 type MenuItem = { id: string; nama: string; harga: number };
@@ -92,7 +93,7 @@ const LAYANAN = [
     icon: "👥",
     judul: "Teman Belajar",
     desc: "Cari kelompok tugas",
-    aktif: false,
+    aktif: true,
   },
   {
     key: "info",
@@ -112,8 +113,10 @@ function Beranda({
   onPick: (key: string) => void;
   onPromo: () => void;
 }) {
-  const [q, setQ] = useState('');
-  const list = LAYANAN.filter((l) => l.judul.toLowerCase().includes(q.trim().toLowerCase()));
+  const [q, setQ] = useState("");
+  const list = LAYANAN.filter((l) =>
+    l.judul.toLowerCase().includes(q.trim().toLowerCase()),
+  );
 
   return (
     <View style={styles.flex}>
@@ -135,19 +138,28 @@ function Beranda({
             <TouchableOpacity
               key={l.key}
               style={[styles.service, !l.aktif && styles.serviceOff]}
-              onPress={() => (l.aktif ? onPick(l.key) : notify(l.judul, 'Segera hadir.'))}>
+              onPress={() =>
+                l.aktif ? onPick(l.key) : notify(l.judul, "Segera hadir.")
+              }
+            >
               <View style={styles.serviceIcon}>
                 <Text style={styles.serviceEmoji}>{l.icon}</Text>
               </View>
               <Text style={styles.serviceTitle}>{l.judul}</Text>
-              <Text style={styles.muted}>{l.aktif ? l.desc : 'Segera hadir'}</Text>
+              <Text style={styles.muted}>
+                {l.aktif ? l.desc : "Segera hadir"}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
-        {list.length === 0 && <Text style={styles.empty}>Layanan tidak ditemukan.</Text>}
+        {list.length === 0 && (
+          <Text style={styles.empty}>Layanan tidak ditemukan.</Text>
+        )}
         <TouchableOpacity style={styles.promo} onPress={onPromo}>
           <Text style={styles.promoTitle}>Promo & Voucher</Text>
-          <Text style={styles.promoText}>Lihat voucher khusus mahasiswa dan pakai kode promo.</Text>
+          <Text style={styles.promoText}>
+            Lihat voucher khusus mahasiswa dan pakai kode promo.
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -209,39 +221,41 @@ function MenuView({
   const [items, setItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<Record<string, number>>({});
-  const [alamat, setAlamat] = useState('');
+  const [alamat, setAlamat] = useState("");
   const [sending, setSending] = useState(false);
   const [coords, setCoords] = useState<Pt | null>(null);
   const [locating, setLocating] = useState(false);
-  const [kodeInput, setKodeInput] = useState('');
-  const [promo, setPromo] = useState<{ diskon: number; nama: string } | null>(null);
+  const [kodeInput, setKodeInput] = useState("");
+  const [promo, setPromo] = useState<{ diskon: number; nama: string } | null>(
+    null,
+  );
   const [promoError, setPromoError] = useState<string | null>(null);
-  const [bayar, setBayar] = useState<'tunai' | 'saldo'>('tunai');
+  const [bayar, setBayar] = useState<"tunai" | "saldo">("tunai");
   const [saldo, setSaldo] = useState<number | null>(null);
 
   useEffect(() => {
     supabase
-      .from('menu_items')
-      .select('id, nama, harga')
-      .eq('merchant_id', merchant.id)
-      .eq('tersedia', true)
-      .order('nama')
+      .from("menu_items")
+      .select("id, nama, harga")
+      .eq("merchant_id", merchant.id)
+      .eq("tersedia", true)
+      .order("nama")
       .then(({ data, error }) => {
-        if (error) notify('Gagal memuat menu', error.message);
+        if (error) notify("Gagal memuat menu", error.message);
         else setItems((data ?? []) as MenuItem[]);
         setLoading(false);
       });
   }, [merchant.id]);
 
   useEffect(() => {
-    supabase.rpc('saldo_saya').then(({ data, error }) => {
+    supabase.rpc("saldo_saya").then(({ data, error }) => {
       if (!error) setSaldo(data as number);
     });
   }, []);
 
   const total = useMemo(
     () => items.reduce((sum, it) => sum + it.harga * (cart[it.id] ?? 0), 0),
-    [items, cart]
+    [items, cart],
   );
   const jumlahItem = Object.values(cart).reduce((a, b) => a + b, 0);
 
@@ -252,17 +266,19 @@ function MenuView({
       return;
     }
     let batal = false;
-    supabase.rpc('cek_voucher', { p_kode: kode, p_subtotal: total }).then(({ data, error }) => {
-      if (batal) return;
-      if (error) {
-        setPromo(null);
-        setPromoError(error.message);
-      } else {
-        const d = data as { diskon: number; nama: string };
-        setPromo({ diskon: d.diskon, nama: d.nama });
-        setPromoError(null);
-      }
-    });
+    supabase
+      .rpc("cek_voucher", { p_kode: kode, p_subtotal: total })
+      .then(({ data, error }) => {
+        if (batal) return;
+        if (error) {
+          setPromo(null);
+          setPromoError(error.message);
+        } else {
+          const d = data as { diskon: number; nama: string };
+          setPromo({ diskon: d.diskon, nama: d.nama });
+          setPromoError(null);
+        }
+      });
     return () => {
       batal = true;
     };
@@ -289,34 +305,37 @@ function MenuView({
     const k = kodeInput.trim().toUpperCase();
     if (!k) return;
     onKode(k);
-    setKodeInput('');
+    setKodeInput("");
   }
 
   const bayarTotal = Math.max(0, total - (promo?.diskon ?? 0));
 
   async function pesan() {
     if (jumlahItem === 0) {
-      notify('Keranjang kosong', 'Pilih menu dulu ya.');
+      notify("Keranjang kosong", "Pilih menu dulu ya.");
       return;
     }
     if (!coords) {
-      notify('Lokasi belum ada', 'Tekan "Gunakan lokasi saya sekarang" dulu.');
+      notify("Lokasi belum ada", 'Tekan "Gunakan lokasi saya sekarang" dulu.');
       return;
     }
     if (!alamat.trim()) {
-      notify('Alamat kosong', 'Isi gedung dan ruang tujuan dulu.');
+      notify("Alamat kosong", "Isi gedung dan ruang tujuan dulu.");
       return;
     }
     if (kode && promoError) {
-      notify('Promo belum bisa dipakai', promoError);
+      notify("Promo belum bisa dipakai", promoError);
       return;
     }
-    if (bayar === 'saldo' && saldo != null && saldo < bayarTotal) {
-      notify('Saldo tidak cukup', 'Isi saldo di Akun > Dompet, atau pilih bayar tunai.');
+    if (bayar === "saldo" && saldo != null && saldo < bayarTotal) {
+      notify(
+        "Saldo tidak cukup",
+        "Isi saldo di Akun > Dompet, atau pilih bayar tunai.",
+      );
       return;
     }
     setSending(true);
-    const { error } = await supabase.rpc('buat_pesanan', {
+    const { error } = await supabase.rpc("buat_pesanan", {
       p_merchant_id: merchant.id,
       p_alamat: alamat.trim(),
       p_items: items
@@ -329,11 +348,11 @@ function MenuView({
     });
     setSending(false);
     if (error) {
-      notify('Gagal membuat pesanan', error.message);
+      notify("Gagal membuat pesanan", error.message);
       return;
     }
-    onKode('');
-    notify('Pesanan terkirim!', 'Penjual akan segera memprosesnya.');
+    onKode("");
+    notify("Pesanan terkirim!", "Penjual akan segera memprosesnya.");
     onOrdered();
   }
 
@@ -346,7 +365,9 @@ function MenuView({
           style={styles.flex}
           data={items}
           keyExtractor={(it) => it.id}
-          ListEmptyComponent={<Text style={styles.empty}>Belum ada menu tersedia.</Text>}
+          ListEmptyComponent={
+            <Text style={styles.empty}>Belum ada menu tersedia.</Text>
+          }
           renderItem={({ item }) => (
             <View style={styles.row}>
               <View style={styles.flex}>
@@ -354,11 +375,17 @@ function MenuView({
                 <Text style={styles.price}>{rupiah(item.harga)}</Text>
               </View>
               <View style={styles.qtyBox}>
-                <TouchableOpacity style={styles.qtyBtn} onPress={() => ubah(item.id, -1)}>
+                <TouchableOpacity
+                  style={styles.qtyBtn}
+                  onPress={() => ubah(item.id, -1)}
+                >
                   <Text style={styles.qtyBtnText}>−</Text>
                 </TouchableOpacity>
                 <Text style={styles.qty}>{cart[item.id] ?? 0}</Text>
-                <TouchableOpacity style={styles.qtyBtn} onPress={() => ubah(item.id, 1)}>
+                <TouchableOpacity
+                  style={styles.qtyBtn}
+                  onPress={() => ubah(item.id, 1)}
+                >
                   <Text style={styles.qtyBtnText}>+</Text>
                 </TouchableOpacity>
               </View>
@@ -372,7 +399,7 @@ function MenuView({
           {kode ? (
             <View style={styles.promoChip}>
               <Text style={styles.promoChipText}>Promo {kode}</Text>
-              <TouchableOpacity onPress={() => onKode('')}>
+              <TouchableOpacity onPress={() => onKode("")}>
                 <Text style={styles.promoLepas}>Lepas</Text>
               </TouchableOpacity>
             </View>
@@ -397,32 +424,44 @@ function MenuView({
             Hemat {rupiah(promo.diskon)} dengan {promo.nama}
           </Text>
         )}
-        {kode !== '' && total <= 0 && (
-          <Text style={styles.muted}>Pilih menu untuk melihat potongan promo.</Text>
+        {kode !== "" && total <= 0 && (
+          <Text style={styles.muted}>
+            Pilih menu untuk melihat potongan promo.
+          </Text>
         )}
         {promoError && <Text style={styles.promoErr}>{promoError}</Text>}
 
         <View style={styles.payRow}>
           <TouchableOpacity
-            style={[styles.payChip, bayar === 'tunai' && styles.payChipOn]}
-            onPress={() => setBayar('tunai')}>
-            <Text style={bayar === 'tunai' ? styles.payTextOn : styles.payText}>Tunai</Text>
+            style={[styles.payChip, bayar === "tunai" && styles.payChipOn]}
+            onPress={() => setBayar("tunai")}
+          >
+            <Text style={bayar === "tunai" ? styles.payTextOn : styles.payText}>
+              Tunai
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.payChip, bayar === 'saldo' && styles.payChipOn]}
-            onPress={() => setBayar('saldo')}>
-            <Text style={bayar === 'saldo' ? styles.payTextOn : styles.payText}>
-              Saldo{saldo != null ? ` ${rupiah(saldo)}` : ''}
+            style={[styles.payChip, bayar === "saldo" && styles.payChipOn]}
+            onPress={() => setBayar("saldo")}
+          >
+            <Text style={bayar === "saldo" ? styles.payTextOn : styles.payText}>
+              Saldo{saldo != null ? ` ${rupiah(saldo)}` : ""}
             </Text>
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.outlineBtn} onPress={pakaiLokasi} disabled={locating}>
+        <TouchableOpacity
+          style={styles.outlineBtn}
+          onPress={pakaiLokasi}
+          disabled={locating}
+        >
           {locating ? (
             <ActivityIndicator color={C.primary} />
           ) : (
             <Text style={styles.outlineText}>
-              {coords ? 'Lokasi antar tersimpan ✓ (ketuk untuk perbarui)' : 'Gunakan lokasi saya sekarang'}
+              {coords
+                ? "Lokasi antar tersimpan ✓ (ketuk untuk perbarui)"
+                : "Gunakan lokasi saya sekarang"}
             </Text>
           )}
         </TouchableOpacity>
@@ -433,7 +472,11 @@ function MenuView({
           value={alamat}
           onChangeText={setAlamat}
         />
-        <TouchableOpacity style={styles.primaryBtn} onPress={pesan} disabled={sending}>
+        <TouchableOpacity
+          style={styles.primaryBtn}
+          onPress={pesan}
+          disabled={sending}
+        >
           {sending ? (
             <ActivityIndicator color="#fff" />
           ) : (
@@ -464,8 +507,10 @@ function ServiceScreen({
   onBack: () => void;
   onOrdered: () => void;
 }) {
-  const [merchant, setMerchant] = useState<Merchant | null>(initialMerchant ?? null);
-  const judul = layanan === 'kantin' ? 'Titip Kantin' : 'Titip Beli';
+  const [merchant, setMerchant] = useState<Merchant | null>(
+    initialMerchant ?? null,
+  );
+  const judul = layanan === "kantin" ? "Titip Kantin" : "Titip Beli";
 
   function kembali() {
     if (merchant && !initialMerchant) setMerchant(null);
@@ -478,13 +523,15 @@ function ServiceScreen({
         <TouchableOpacity onPress={kembali}>
           <Text style={styles.headerBack}>‹ Kembali</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{merchant ? (merchant.nama ?? 'Penjual') : judul}</Text>
-        {layanan === 'kantin' && !merchant && (
+        <Text style={styles.headerTitle}>
+          {merchant ? (merchant.nama ?? "Penjual") : judul}
+        </Text>
+        {layanan === "kantin" && !merchant && (
           <Text style={styles.headerSub}>Pilih kantin atau warung</Text>
         )}
       </View>
       <View style={styles.serviceBody}>
-        {layanan === 'kantin' ? (
+        {layanan === "kantin" ? (
           merchant ? (
             <MenuView
               userId={userId}
@@ -738,38 +785,47 @@ function AkunTab({
   onRiwayat: () => void;
   onDompet: () => void;
 }) {
-  const [kampus, setKampus] = useState('');
+  const [kampus, setKampus] = useState("");
   const [nPesanan, setNPesanan] = useState<number | null>(null);
   const [nTitip, setNTitip] = useState<number | null>(null);
   const [saldo, setSaldo] = useState<number | null>(null);
 
   useEffect(() => {
     supabase
-      .from('profiles')
-      .select('kampus')
-      .eq('id', userId)
+      .from("profiles")
+      .select("kampus")
+      .eq("id", userId)
       .single()
-      .then(({ data }) => setKampus((data as { kampus: string | null } | null)?.kampus ?? ''));
+      .then(({ data }) =>
+        setKampus((data as { kampus: string | null } | null)?.kampus ?? ""),
+      );
     supabase
-      .from('orders')
-      .select('id', { count: 'exact', head: true })
-      .eq('customer_id', userId)
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("customer_id", userId)
       .then(({ count }) => setNPesanan(count ?? 0));
     supabase
-      .from('titip_requests')
-      .select('id', { count: 'exact', head: true })
-      .eq('requester_id', userId)
+      .from("titip_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("requester_id", userId)
       .then(({ count }) => setNTitip(count ?? 0));
-    supabase.rpc('saldo_saya').then(({ data, error }) => {
+    supabase.rpc("saldo_saya").then(({ data, error }) => {
       if (!error) setSaldo(data as number);
     });
   }, [userId]);
 
   const MENU: { label: string; value?: string; onPress: () => void }[] = [
-    { label: 'Riwayat pesanan', onPress: onRiwayat },
-    { label: 'Dompet', value: saldo != null ? rupiah(saldo) : undefined, onPress: onDompet },
-    { label: 'Alamat antar', onPress: () => notify('Alamat antar', 'Segera hadir.') },
-    { label: 'Bantuan', onPress: () => notify('Bantuan', 'Segera hadir.') },
+    { label: "Riwayat pesanan", onPress: onRiwayat },
+    {
+      label: "Dompet",
+      value: saldo != null ? rupiah(saldo) : undefined,
+      onPress: onDompet,
+    },
+    {
+      label: "Alamat antar",
+      onPress: () => notify("Alamat antar", "Segera hadir."),
+    },
+    { label: "Bantuan", onPress: () => notify("Bantuan", "Segera hadir.") },
   ];
 
   return (
@@ -778,36 +834,47 @@ function AkunTab({
       <ScrollView contentContainerStyle={styles.body}>
         <View style={styles.profileCard}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{nama.trim().charAt(0).toUpperCase() || '?'}</Text>
+            <Text style={styles.avatarText}>
+              {nama.trim().charAt(0).toUpperCase() || "?"}
+            </Text>
           </View>
           <View style={styles.flex}>
             <Text style={styles.cardTitle}>{nama}</Text>
-            <Text style={styles.muted}>{kampus || 'Kampus belum diisi'}</Text>
+            <Text style={styles.muted}>{kampus || "Kampus belum diisi"}</Text>
           </View>
         </View>
 
         <View style={styles.statRow}>
           <View style={styles.stat}>
-            <Text style={styles.statNum}>{nPesanan ?? '–'}</Text>
+            <Text style={styles.statNum}>{nPesanan ?? "–"}</Text>
             <Text style={styles.muted}>Pesanan</Text>
           </View>
           <View style={styles.stat}>
-            <Text style={styles.statNum}>{nTitip ?? '–'}</Text>
+            <Text style={styles.statNum}>{nTitip ?? "–"}</Text>
             <Text style={styles.muted}>Titipan</Text>
           </View>
         </View>
 
         {MENU.map((m) => (
-          <TouchableOpacity key={m.label} style={styles.menuRow} onPress={m.onPress}>
+          <TouchableOpacity
+            key={m.label}
+            style={styles.menuRow}
+            onPress={m.onPress}
+          >
             <Text style={styles.menuText}>{m.label}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+            >
               {m.value ? <Text style={styles.menuValue}>{m.value}</Text> : null}
               <Text style={styles.muted}>›</Text>
             </View>
           </TouchableOpacity>
         ))}
 
-        <TouchableOpacity style={styles.logoutBtn} onPress={() => supabase.auth.signOut()}>
+        <TouchableOpacity
+          style={styles.logoutBtn}
+          onPress={() => supabase.auth.signOut()}
+        >
           <Text style={styles.logoutText}>Keluar</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -848,23 +915,32 @@ function BottomNav({
   );
 }
 
-export function CustomerHome({ userId, nama }: { userId: string; nama: string }) {
-  const [tab, setTab] = useState<Tab>('beranda');
+export function CustomerHome({
+  userId,
+  nama,
+}: {
+  userId: string;
+  nama: string;
+}) {
+  const [tab, setTab] = useState<Tab>("beranda");
   const [layanan, setLayanan] = useState<string | null>(null);
-  const [pesananFilter, setPesananFilter] = useState<Filter>('aktif');
-  const [room, setRoom] = useState<{ type: 'order' | 'titip'; id: string } | null>(null);
+  const [pesananFilter, setPesananFilter] = useState<Filter>("aktif");
+  const [room, setRoom] = useState<{
+    type: "order" | "titip";
+    id: string;
+  } | null>(null);
   const [rating, setRating] = useState<string | null>(null);
   const [cari, setCari] = useState(false);
   const [toko, setToko] = useState<Merchant | null>(null);
   const [promoOpen, setPromoOpen] = useState(false);
-  const [kodePromo, setKodePromo] = useState('');
+  const [kodePromo, setKodePromo] = useState("");
   const [dompet, setDompet] = useState(false);
 
   function selesaiPesan() {
     setLayanan(null);
     setToko(null);
-    setPesananFilter('aktif');
-    setTab('pesanan');
+    setPesananFilter("aktif");
+    setTab("pesanan");
   }
 
   if (rating) {
@@ -925,6 +1001,12 @@ export function CustomerHome({ userId, nama }: { userId: string; nama: string })
     );
   }
 
+  if (layanan === "belajar") {
+    return (
+      <TemanBelajarScreen userId={userId} onBack={() => setLayanan(null)} />
+    );
+  }
+
   if (layanan) {
     return (
       <ServiceScreen
@@ -941,14 +1023,14 @@ export function CustomerHome({ userId, nama }: { userId: string; nama: string })
   return (
     <View style={styles.flex}>
       <View style={styles.flex}>
-        {tab === 'beranda' && (
+        {tab === "beranda" && (
           <Beranda
             nama={nama}
-            onPick={(key) => (key === 'cari' ? setCari(true) : setLayanan(key))}
+            onPick={(key) => (key === "cari" ? setCari(true) : setLayanan(key))}
             onPromo={() => setPromoOpen(true)}
           />
         )}
-        {tab === 'pesanan' && (
+        {tab === "pesanan" && (
           <PesananTab
             key={pesananFilter}
             userId={userId}
@@ -956,16 +1038,19 @@ export function CustomerHome({ userId, nama }: { userId: string; nama: string })
             onRate={setRating}
           />
         )}
-        {tab === 'chat' && (
-          <ChatList userId={userId} onOpen={(type, id) => setRoom({ type, id })} />
+        {tab === "chat" && (
+          <ChatList
+            userId={userId}
+            onOpen={(type, id) => setRoom({ type, id })}
+          />
         )}
-        {tab === 'akun' && (
+        {tab === "akun" && (
           <AkunTab
             userId={userId}
             nama={nama}
             onRiwayat={() => {
-              setPesananFilter('selesai');
-              setTab('pesanan');
+              setPesananFilter("selesai");
+              setTab("pesanan");
             }}
             onDompet={() => setDompet(true)}
           />
@@ -1127,13 +1212,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   outlineText: { fontFamily: F.bold, color: C.primary },
-    promoRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  promoRow: { flexDirection: "row", gap: 8, alignItems: "center" },
   promoChip: {
     flex: 1,
     minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 14,
     borderRadius: 14,
     backgroundColor: C.soft,
@@ -1145,26 +1230,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     borderRadius: 14,
     backgroundColor: C.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  pakaiText: { fontFamily: F.xbold, fontSize: 14, color: '#fff' },
+  pakaiText: { fontFamily: F.xbold, fontSize: 14, color: "#fff" },
   diskonText: { fontFamily: F.bold, fontSize: 13, color: C.primary },
   promoErr: { fontFamily: F.semi, fontSize: 13, color: C.danger },
-    payRow: { flexDirection: 'row', gap: 8 },
+  payRow: { flexDirection: "row", gap: 8 },
   payChip: {
     flex: 1,
     minHeight: 44,
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: C.border,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
   },
   payChipOn: { backgroundColor: C.primary, borderColor: C.primary },
   payText: { fontFamily: F.semi, fontSize: 13, color: C.navy },
-  payTextOn: { fontFamily: F.xbold, fontSize: 13, color: '#fff' },
+  payTextOn: { fontFamily: F.xbold, fontSize: 13, color: "#fff" },
   menuValue: { fontFamily: F.bold, fontSize: 14, color: C.primary },
 
   pillRow: { flexDirection: "row", gap: 8 },

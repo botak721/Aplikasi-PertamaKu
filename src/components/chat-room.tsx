@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ComponentRef } from 'react';
+import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -15,7 +14,7 @@ import { supabase } from '@/lib/supabase';
 import { notify } from '@/lib/notify';
 import { C, F } from '@/constants/kampusgo';
 
-type Msg = { id: string; sender_id: string; isi: string; created_at: string };
+type Msg = { id: string; sender_id: string; sender_nama: string | null; isi: string; created_at: string };
 type Info = { nama: string; aktif: boolean };
 
 const CEPAT = ['Saya di depan gedung', 'Tunggu sebentar'];
@@ -26,7 +25,7 @@ export function ChatRoom({
   userId,
   onBack,
 }: {
-  threadType: 'order' | 'titip';
+  threadType: 'order' | 'titip' | 'grup';
   threadId: string;
   userId: string;
   onBack: () => void;
@@ -42,7 +41,7 @@ export function ChatRoom({
     const [m, i] = await Promise.all([
       supabase
         .from('messages')
-        .select('id, sender_id, isi, created_at')
+        .select('id, sender_id, sender_nama, isi, created_at')
         .eq('thread_type', threadType)
         .eq('thread_id', threadId)
         .order('created_at', { ascending: true })
@@ -89,8 +88,12 @@ export function ChatRoom({
   const sub = aktif
     ? threadType === 'order'
       ? 'Sedang mengantar pesanan lu'
-      : 'Sedang dibelikan'
-    : 'Percakapan sudah selesai';
+      : threadType === 'titip'
+        ? 'Sedang dibelikan'
+        : 'Obrolan kelompok'
+    : threadType === 'grup'
+      ? 'Kelompok sudah ditutup'
+      : 'Percakapan sudah selesai';
 
   return (
     <KeyboardAvoidingView
@@ -123,6 +126,9 @@ export function ChatRoom({
             const saya = m.sender_id === userId;
             return (
               <View key={m.id} style={[styles.bubble, saya ? styles.mine : styles.theirs]}>
+                {!saya && threadType === 'grup' && (
+                  <Text style={styles.sender}>{m.sender_nama ?? 'Anggota'}</Text>
+                )}
                 <Text style={saya ? styles.mineText : styles.theirsText}>{m.isi}</Text>
               </View>
             );
@@ -132,13 +138,15 @@ export function ChatRoom({
 
       {aktif ? (
         <View style={styles.footer}>
-          <View style={styles.chips}>
-            {CEPAT.map((c) => (
-              <TouchableOpacity key={c} style={styles.chip} onPress={() => kirim(c)}>
-                <Text style={styles.chipText}>{c}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          {threadType !== 'grup' && (
+            <View style={styles.chips}>
+              {CEPAT.map((c) => (
+                <TouchableOpacity key={c} style={styles.chip} onPress={() => kirim(c)}>
+                  <Text style={styles.chipText}>{c}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
           <View style={styles.inputRow}>
             <TextInput
               style={styles.input}
@@ -191,11 +199,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   backText: { color: '#fff', fontSize: 28, fontFamily: F.bold, lineHeight: 32 },
-  title: { flex: 1, fontFamily: F.xbold, fontSize: 24, color: '#fff' },
+  title: { flex: 1, fontFamily: F.xbold, fontSize: 22, color: '#fff' },
   sub: { fontFamily: F.reg, fontSize: 13, color: '#fff', opacity: 0.9, paddingLeft: 56 },
   list: { padding: 22, gap: 12, flexGrow: 1 },
   empty: { fontFamily: F.reg, color: C.muted, textAlign: 'center', marginTop: 24 },
-  bubble: { maxWidth: '75%', paddingVertical: 10, paddingHorizontal: 14 },
+  bubble: { maxWidth: '75%', paddingVertical: 10, paddingHorizontal: 14, gap: 2 },
   theirs: {
     alignSelf: 'flex-start',
     backgroundColor: '#fff',
@@ -214,6 +222,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 4,
   },
+  sender: { fontFamily: F.xbold, fontSize: 12, color: C.primary },
   theirsText: { fontFamily: F.reg, fontSize: 14, color: C.navy },
   mineText: { fontFamily: F.reg, fontSize: 14, color: '#fff' },
   footer: { paddingHorizontal: 22, paddingBottom: 14, paddingTop: 6, gap: 10 },
