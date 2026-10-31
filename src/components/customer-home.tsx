@@ -23,6 +23,7 @@ import { CariScreen } from "@/components/cari-screen";
 import { PromoScreen } from "@/components/promo-screen";
 import { DompetScreen } from "@/components/dompet-screen";
 import { TemanBelajarScreen } from "@/components/teman-belajar";
+import { OjekScreen } from "@/components/ojek-screen";
 
 type Merchant = { id: string; nama: string | null };
 type MenuItem = { id: string; nama: string; harga: number };
@@ -79,7 +80,7 @@ const LAYANAN = [
     icon: "🏍️",
     judul: "Ojek Kampus",
     desc: "Gerbang ke fakultas",
-    aktif: false,
+    aktif: true,
   },
   {
     key: "titip_beli",
@@ -999,6 +1000,10 @@ export function CustomerHome({
         }}
       />
     );
+  }
+
+  if (layanan === "ojek") {
+    return <OjekScreen userId={userId} onBack={() => setLayanan(null)} />;
   }
 
   if (layanan === "belajar") {

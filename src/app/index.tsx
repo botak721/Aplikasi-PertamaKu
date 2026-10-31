@@ -1,22 +1,28 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import type { Session } from '@supabase/supabase-js';
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import type { Session } from "@supabase/supabase-js";
 import {
   PlusJakartaSans_400Regular,
   PlusJakartaSans_600SemiBold,
   PlusJakartaSans_700Bold,
   PlusJakartaSans_800ExtraBold,
   useFonts,
-} from '@expo-google-fonts/plus-jakarta-sans';
-import { supabase } from '@/lib/supabase';
-import { AuthForm } from '@/components/auth-form';
-import { MerchantHome } from '@/components/merchant-home';
-import { CustomerHome } from '@/components/customer-home';
-import { DriverHome } from '@/components/driver-home';
-import { C, F } from '@/constants/kampusgo';
+} from "@expo-google-fonts/plus-jakarta-sans";
+import { supabase } from "@/lib/supabase";
+import { AuthForm } from "@/components/auth-form";
+import { MerchantHome } from "@/components/merchant-home";
+import { CustomerHome } from "@/components/customer-home";
+import { DriverShell } from "@/components/driver-shell";
+import { C, F } from "@/constants/kampusgo";
 
-type Role = 'customer' | 'driver' | 'merchant';
+type Role = "customer" | "driver" | "merchant";
 type Profile = { nama: string | null; role: Role };
 
 export default function HomeScreen() {
@@ -36,9 +42,11 @@ export default function HomeScreen() {
       setSession(data.session);
       setLoading(false);
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-    });
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, newSession) => {
+        setSession(newSession);
+      },
+    );
     return () => listener.subscription.unsubscribe();
   }, []);
 
@@ -50,9 +58,9 @@ export default function HomeScreen() {
     }
     setProfileLoading(true);
     supabase
-      .from('profiles')
-      .select('nama, role')
-      .eq('id', session.user.id)
+      .from("profiles")
+      .select("nama, role")
+      .eq("id", session.user.id)
       .single()
       .then(({ data }) => {
         setProfile(data as Profile | null);
@@ -60,7 +68,8 @@ export default function HomeScreen() {
       });
   }, [session]);
 
-  const ready = (fontsLoaded || !!fontError) && !loading && !(session && profileLoading);
+  const ready =
+    (fontsLoaded || !!fontError) && !loading && !(session && profileLoading);
 
   let content;
   if (!ready) {
@@ -71,12 +80,21 @@ export default function HomeScreen() {
     );
   } else if (!session) {
     content = <AuthForm />;
-  } else if (profile?.role === 'merchant') {
-    content = <MerchantHome userId={session.user.id} nama={profile.nama ?? 'Penjual'} />;
-  } else if (profile?.role === 'customer') {
-    content = <CustomerHome userId={session.user.id} nama={profile.nama ?? 'Mahasiswa'} />;
-  } else if (profile?.role === 'driver') {
-    content = <DriverHome userId={session.user.id} nama={profile.nama ?? 'Driver'} />;
+  } else if (profile?.role === "merchant") {
+    content = (
+      <MerchantHome userId={session.user.id} nama={profile.nama ?? "Penjual"} />
+    );
+  } else if (profile?.role === "customer") {
+    content = (
+      <CustomerHome
+        userId={session.user.id}
+        nama={profile.nama ?? "Mahasiswa"}
+      />
+    );
+  } else if (profile?.role === "driver") {
+    content = (
+      <DriverShell userId={session.user.id} nama={profile.nama ?? "Driver"} />
+    );
   } else {
     content = (
       <View style={styles.center}>
@@ -93,7 +111,13 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.bg },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, gap: 12 },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+    gap: 12,
+  },
   msg: { fontFamily: F.semi, fontSize: 16, color: C.navy },
   link: { fontFamily: F.xbold, fontSize: 15, color: C.primary },
 });
