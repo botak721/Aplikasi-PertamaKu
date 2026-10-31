@@ -24,6 +24,7 @@ import { PromoScreen } from "@/components/promo-screen";
 import { DompetScreen } from "@/components/dompet-screen";
 import { TemanBelajarScreen } from "@/components/teman-belajar";
 import { OjekScreen } from "@/components/ojek-screen";
+import { InfoKampusScreen } from "@/components/info-kampus";
 
 type Merchant = { id: string; nama: string | null };
 type MenuItem = { id: string; nama: string; harga: number };
@@ -101,7 +102,7 @@ const LAYANAN = [
     icon: "📢",
     judul: "Info Kampus",
     desc: "Jadwal, ruang kosong",
-    aktif: false,
+    aktif: true,
   },
 ];
 
@@ -1002,6 +1003,9 @@ export function CustomerHome({
     );
   }
 
+  if (layanan === "info") {
+    return <InfoKampusScreen onBack={() => setLayanan(null)} />;
+  }
   if (layanan === "ojek") {
     return <OjekScreen userId={userId} onBack={() => setLayanan(null)} />;
   }

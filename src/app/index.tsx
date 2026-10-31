@@ -19,10 +19,11 @@ import { supabase } from "@/lib/supabase";
 import { AuthForm } from "@/components/auth-form";
 import { MerchantHome } from "@/components/merchant-home";
 import { CustomerHome } from "@/components/customer-home";
+import { AdminHome } from "@/components/admin-home";
 import { DriverShell } from "@/components/driver-shell";
 import { C, F } from "@/constants/kampusgo";
 
-type Role = "customer" | "driver" | "merchant";
+type Role = "customer" | "driver" | "merchant" | "admin";
 type Profile = { nama: string | null; role: Role };
 
 export default function HomeScreen() {
@@ -91,6 +92,8 @@ export default function HomeScreen() {
         nama={profile.nama ?? "Mahasiswa"}
       />
     );
+  } else if (profile?.role === "admin") {
+    content = <AdminHome nama={profile.nama ?? "Admin"} />;
   } else if (profile?.role === "driver") {
     content = (
       <DriverShell userId={session.user.id} nama={profile.nama ?? "Driver"} />
