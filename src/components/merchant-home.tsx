@@ -45,6 +45,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tabActive: { backgroundColor: '#2547D0', borderColor: '#2547D0' },
-  tabText: { color: '#0E1B5C', fontFamily: 'PlusJakartaSans_600SemiBold' },
+  tabText: { color: '#0A0F1E', fontFamily: 'PlusJakartaSans_600SemiBold' },
   tabTextActive: { color: '#fff' },
 });

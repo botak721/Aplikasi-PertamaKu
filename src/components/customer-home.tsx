@@ -1,5 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { CariScreen } from "@/components/cari-screen";
+import { ChatList } from "@/components/chat-list";
+import { ChatRoom } from "@/components/chat-room";
+import { DompetScreen } from "@/components/dompet-screen";
+import { InfoKampusScreen } from "@/components/info-kampus";
+import { OjekScreen } from "@/components/ojek-screen";
+import { PromoScreen } from "@/components/promo-screen";
+import { RatingScreen } from "@/components/rating-screen";
+import { TemanBelajarScreen } from "@/components/teman-belajar";
+import { TitipBeli } from "@/components/titip-beli";
+import { TrackOrder } from "@/components/track-order";
+import type { IconName } from "@/components/ui";
+import { Icon, shadow } from "@/components/ui";
+import { C, F } from "@/constants/kampusgo";
+import { getCoords } from "@/lib/geo";
+import { notify } from "@/lib/notify";
+import { supabase } from "@/lib/supabase";
 import type { ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -10,21 +27,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { supabase } from "@/lib/supabase";
-import { getCoords } from "@/lib/geo";
-import { notify } from "@/lib/notify";
-import { TrackOrder } from "@/components/track-order";
-import { TitipBeli } from "@/components/titip-beli";
-import { ChatList } from "@/components/chat-list";
-import { ChatRoom } from "@/components/chat-room";
-import { C, F } from "@/constants/kampusgo";
-import { RatingScreen } from "@/components/rating-screen";
-import { CariScreen } from "@/components/cari-screen";
-import { PromoScreen } from "@/components/promo-screen";
-import { DompetScreen } from "@/components/dompet-screen";
-import { TemanBelajarScreen } from "@/components/teman-belajar";
-import { OjekScreen } from "@/components/ojek-screen";
-import { InfoKampusScreen } from "@/components/info-kampus";
 
 type Merchant = { id: string; nama: string | null };
 type MenuItem = { id: string; nama: string; harga: number };
@@ -54,119 +56,456 @@ function Header({ title, children }: { title: string; children?: ReactNode }) {
 
 /* ---------------- Beranda ---------------- */
 
-const LAYANAN = [
-  {
-    key: "cari",
-    icon: "🔎",
-    judul: "Cari Kantin",
-    desc: "Terdekat, urut, dan filter",
-    aktif: true,
-  },
-  {
-    key: "kantin",
-    icon: "🍜",
-    judul: "Titip Kantin",
-    desc: "Diantar ke gedung lu",
-    aktif: true,
-  },
-  {
-    key: "print",
-    icon: "🖨️",
-    judul: "Print & Fotokopi",
-    desc: "Upload, tinggal ambil",
-    aktif: false,
-  },
-  {
-    key: "ojek",
-    icon: "🏍️",
-    judul: "Ojek Kampus",
-    desc: "Gerbang ke fakultas",
-    aktif: true,
-  },
-  {
-    key: "titip_beli",
-    icon: "🛍️",
-    judul: "Titip Beli",
-    desc: "Alat tulis, materai, buku",
-    aktif: true,
-  },
-  {
-    key: "belajar",
-    icon: "👥",
-    judul: "Teman Belajar",
-    desc: "Cari kelompok tugas",
-    aktif: true,
-  },
-  {
-    key: "info",
-    icon: "📢",
-    judul: "Info Kampus",
-    desc: "Jadwal, ruang kosong",
-    aktif: true,
-  },
-];
+const LAYANAN: { key: string; icon: IconName; judul: string; desc: string }[] =
+  [
+    {
+      key: "kantin",
+      icon: "restaurant",
+      judul: "Titip Kantin",
+      desc: "Menu kantin fav",
+    },
+    {
+      key: "titip_beli",
+      icon: "shopping-bag",
+      judul: "Titip Beli",
+      desc: "Print, ATK & snack",
+    },
+    {
+      key: "belajar",
+      icon: "group",
+      judul: "Teman Belajar",
+      desc: "Kelompok & tugas",
+    },
+    {
+      key: "ojek",
+      icon: "two-wheeler",
+      judul: "Ojek Kampus",
+      desc: "Tarif flat keliling",
+    },
+    {
+      key: "info",
+      icon: "campaign",
+      judul: "Info Kampus",
+      desc: "Jadwal & event",
+    },
+    {
+      key: "cari",
+      icon: "storefront",
+      judul: "Cari Kantin",
+      desc: "Cari stan terdekat",
+    },
+  ];
+
+const PROGRES: Record<string, { label: string; pct: number }> = {
+  baru: { label: "Menunggu penjual", pct: 20 },
+  diproses: { label: "Sedang disiapkan", pct: 45 },
+  siap: { label: "Siap diantar", pct: 65 },
+  diantar: { label: "Sedang diantar", pct: 85 },
+};
 
 function Beranda({
   nama,
+  userId,
   onPick,
   onPromo,
+  onDompet,
+  onPesanan,
 }: {
   nama: string;
+  userId: string;
   onPick: (key: string) => void;
   onPromo: () => void;
+  onDompet: () => void;
+  onPesanan: () => void;
 }) {
   const [q, setQ] = useState("");
-  const list = LAYANAN.filter((l) =>
+  const [saldo, setSaldo] = useState<number | null>(null);
+  const [kampus, setKampus] = useState("");
+  const [aktif, setAktif] = useState<{
+    merchant: string | null;
+    status: string;
+  } | null>(null);
+
+  useEffect(() => {
+    let hidup = true;
+    const muat = async () => {
+      const [s, p, o] = await Promise.all([
+        supabase.rpc("saldo_saya"),
+        supabase.from("profiles").select("kampus").eq("id", userId).single(),
+        supabase
+          .from("orders")
+          .select("merchant_nama, status")
+          .eq("customer_id", userId)
+          .in("status", ["baru", "diproses", "siap", "diantar"])
+          .order("created_at", { ascending: false })
+          .limit(1),
+      ]);
+      if (!hidup) return;
+      if (!s.error) setSaldo(s.data as number);
+      setKampus((p.data as { kampus: string | null } | null)?.kampus ?? "");
+      const baris = (
+        (o.data ?? []) as { merchant_nama: string | null; status: string }[]
+      )[0];
+      setAktif(
+        baris ? { merchant: baris.merchant_nama, status: baris.status } : null,
+      );
+    };
+    muat();
+    const timer = setInterval(muat, 15000);
+    return () => {
+      hidup = false;
+      clearInterval(timer);
+    };
+  }, [userId]);
+
+  const daftar = LAYANAN.filter((l) =>
     l.judul.toLowerCase().includes(q.trim().toLowerCase()),
   );
+  const info = aktif ? PROGRES[aktif.status] : null;
 
   return (
-    <View style={styles.flex}>
-      <Header title={`Halo, ${nama}`}>
-        <View style={styles.search}>
+    <ScrollView
+      style={styles.flex}
+      contentContainerStyle={{ paddingBottom: 24 }}
+    >
+      <View style={bs.header}>
+        <View style={bs.topRow}>
+          <View style={bs.campusPill}>
+            <Icon name="location-on" size={16} color="#fff" />
+            <Text style={bs.campusText} numberOfLines={1}>
+              {kampus || "KampusGo"}
+            </Text>
+          </View>
+          <View style={bs.avatar}>
+            <Text style={bs.avatarText}>
+              {nama.trim().charAt(0).toUpperCase() || "?"}
+            </Text>
+          </View>
+        </View>
+        <View style={{ gap: 4 }}>
+          <Text style={bs.hello}>Halo, {nama}! 👋</Text>
+          <Text style={bs.title}>Mau titip apa hari ini?</Text>
+          <Text style={bs.sub}>Urusan kampus, gas dulu.</Text>
+        </View>
+        <View style={bs.search}>
+          <Icon name="search" size={20} color={C.muted} />
           <TextInput
-            style={styles.searchInput}
-            placeholder="Cari kantin, print, teman belajar"
+            style={bs.searchInput}
+            placeholder="Cari layanan kampus"
             placeholderTextColor={C.muted}
             value={q}
             onChangeText={setQ}
           />
         </View>
-      </Header>
-      <ScrollView contentContainerStyle={styles.body}>
-        <Text style={styles.sectionTitle}>Layanan</Text>
-        <View style={styles.grid}>
-          {list.map((l) => (
+      </View>
+
+      <View style={bs.content}>
+        <View style={bs.wallet}>
+          <View style={{ gap: 4 }}>
+            <Text style={bs.walletLabel}>DOMPET KAMPUSGO</Text>
+            <Text style={bs.walletAmount}>
+              {saldo == null ? "Rp --.---" : rupiah(saldo)}
+            </Text>
+          </View>
+          <View style={bs.walletActions}>
             <TouchableOpacity
-              key={l.key}
-              style={[styles.service, !l.aktif && styles.serviceOff]}
-              onPress={() =>
-                l.aktif ? onPick(l.key) : notify(l.judul, "Segera hadir.")
-              }
+              style={bs.action}
+              onPress={onDompet}
+              accessibilityLabel="Top Up"
             >
-              <View style={styles.serviceIcon}>
-                <Text style={styles.serviceEmoji}>{l.icon}</Text>
+              <View style={bs.actionIcon}>
+                <Icon name="add-circle-outline" size={22} color={C.primary} />
               </View>
-              <Text style={styles.serviceTitle}>{l.judul}</Text>
-              <Text style={styles.muted}>
-                {l.aktif ? l.desc : "Segera hadir"}
-              </Text>
+              <Text style={bs.actionText}>Top Up</Text>
             </TouchableOpacity>
-          ))}
+            <TouchableOpacity
+              style={bs.action}
+              onPress={onDompet}
+              accessibilityLabel="Riwayat"
+            >
+              <View style={bs.actionIcon}>
+                <Icon name="history" size={22} color={C.primary} />
+              </View>
+              <Text style={bs.actionText}>Riwayat</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        {list.length === 0 && (
-          <Text style={styles.empty}>Layanan tidak ditemukan.</Text>
+
+        {aktif && info && (
+          <View style={bs.aktifCard}>
+            <View style={bs.aktifTop}>
+              <View style={bs.dot} />
+              <Text style={bs.aktifLabel}>PESANAN BERJALAN</Text>
+            </View>
+            <View style={bs.aktifRow}>
+              <View style={bs.aktifIcon}>
+                <Icon name="two-wheeler" size={24} color={C.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={bs.aktifTitle} numberOfLines={1}>
+                  {aktif.merchant ?? "Penjual"}
+                </Text>
+                <Text style={bs.muted}>Titip Kantin • {info.label}</Text>
+              </View>
+            </View>
+            <View style={bs.track}>
+              <View style={[bs.fill, { width: `${info.pct}%` }]} />
+            </View>
+            <View style={bs.aktifBottom}>
+              <Text style={bs.muted}>{info.label}</Text>
+              <TouchableOpacity onPress={onPesanan}>
+                <Text style={bs.cekLive}>Cek Live ›</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         )}
-        <TouchableOpacity style={styles.promo} onPress={onPromo}>
-          <Text style={styles.promoTitle}>Promo & Voucher</Text>
-          <Text style={styles.promoText}>
-            Lihat voucher khusus mahasiswa dan pakai kode promo.
+
+        <View style={{ gap: 12 }}>
+          <Text style={bs.section}>Layanan Kampus</Text>
+          <View style={bs.grid}>
+            {daftar.map((l) => (
+              <TouchableOpacity
+                key={l.key}
+                style={bs.tile}
+                onPress={() => onPick(l.key)}
+              >
+                <View style={bs.tileIcon}>
+                  <Icon name={l.icon} size={24} color={C.primary} />
+                </View>
+                <Text style={bs.tileTitle}>{l.judul}</Text>
+                <Text style={bs.tileDesc} numberOfLines={2}>
+                  {l.desc}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {daftar.length === 0 && (
+            <Text style={styles.empty}>Layanan tidak ditemukan.</Text>
+          )}
+        </View>
+
+        <TouchableOpacity style={bs.promo} onPress={onPromo}>
+          <View style={bs.promoChip}>
+            <Icon name="bolt" size={14} color="#fff" />
+            <Text style={bs.promoChipText}>Promo Mahasiswa</Text>
+          </View>
+          <Text style={bs.promoTitle}>Pakai voucher khusus mahasiswa</Text>
+          <Text style={bs.promoText}>
+            Lihat voucher aktif dan pakai kodenya saat checkout.
           </Text>
+          <View style={bs.promoLink}>
+            <Text style={bs.promoLinkText}>Lihat voucher</Text>
+            <Icon name="arrow-forward" size={18} color="#fff" />
+          </View>
         </TouchableOpacity>
-      </ScrollView>
-    </View>
+      </View>
+    </ScrollView>
   );
 }
+
+const bs = StyleSheet.create({
+  header: {
+    backgroundColor: C.primary,
+    paddingTop: 20,
+    paddingBottom: 52,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    gap: 14,
+  },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  campusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flexShrink: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
+  campusText: {
+    fontFamily: F.semi,
+    fontSize: 13,
+    color: "#fff",
+    flexShrink: 1,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: { fontFamily: F.xbold, fontSize: 16, color: C.primary },
+  hello: { fontFamily: F.reg, fontSize: 14, color: "#fff" },
+  title: {
+    fontFamily: F.xbold,
+    fontSize: 26,
+    lineHeight: 32,
+    letterSpacing: -0.5,
+    color: "#fff",
+  },
+  sub: { fontFamily: F.reg, fontSize: 14, color: "#C1CAFF" },
+  search: {
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: "#fff",
+  },
+  searchInput: { flex: 1, fontFamily: F.reg, fontSize: 14, color: C.navy },
+  content: { paddingHorizontal: 20, gap: 20 },
+  wallet: {
+    marginTop: -30,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    padding: 16,
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: C.line,
+    ...shadow,
+  },
+  walletLabel: {
+    fontFamily: F.bold,
+    fontSize: 11,
+    letterSpacing: 0.6,
+    color: C.muted,
+  },
+  walletAmount: { fontFamily: F.xbold, fontSize: 24, color: C.navy },
+  walletActions: { flexDirection: "row", gap: 12 },
+  action: { alignItems: "center", gap: 4 },
+  actionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: C.line,
+    backgroundColor: C.soft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionText: { fontFamily: F.semi, fontSize: 11, color: C.navy },
+  aktifCard: {
+    padding: 16,
+    gap: 12,
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: C.line,
+    ...shadow,
+  },
+  aktifTop: { flexDirection: "row", alignItems: "center", gap: 8 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.primary },
+  aktifLabel: {
+    fontFamily: F.bold,
+    fontSize: 11,
+    letterSpacing: 0.6,
+    color: C.primary,
+  },
+  aktifRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  aktifIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: C.soft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  aktifTitle: { fontFamily: F.xbold, fontSize: 16, color: C.navy },
+  muted: { fontFamily: F.reg, fontSize: 13, color: C.muted },
+  track: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: C.soft,
+    overflow: "hidden",
+  },
+  fill: { height: 6, borderRadius: 3, backgroundColor: C.primary },
+  aktifBottom: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  cekLive: { fontFamily: F.xbold, fontSize: 14, color: C.primary },
+  section: { fontFamily: F.xbold, fontSize: 18, color: C.navy },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 10,
+  },
+  tile: {
+    width: "31.5%",
+    minHeight: 124,
+    paddingVertical: 14,
+    paddingHorizontal: 6,
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: C.line,
+  },
+  tileIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: C.line,
+    backgroundColor: C.soft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tileTitle: {
+    fontFamily: F.xbold,
+    fontSize: 13,
+    color: C.navy,
+    textAlign: "center",
+  },
+  tileDesc: {
+    fontFamily: F.reg,
+    fontSize: 11,
+    color: C.muted,
+    textAlign: "center",
+  },
+  promo: { padding: 16, gap: 8, backgroundColor: C.ink, borderRadius: 18 },
+  promoChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.14)",
+  },
+  promoChipText: { fontFamily: F.bold, fontSize: 12, color: "#fff" },
+  promoTitle: {
+    fontFamily: F.xbold,
+    fontSize: 18,
+    lineHeight: 24,
+    color: "#fff",
+  },
+  promoText: { fontFamily: F.reg, fontSize: 13, color: "#C1CAFF" },
+  promoLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 4,
+  },
+  promoLinkText: { fontFamily: F.xbold, fontSize: 14, color: "#fff" },
+});
 
 /* ---------------- Layanan: Titip Kantin ---------------- */
 
@@ -886,11 +1225,11 @@ function AkunTab({
 
 /* ---------------- Navigasi bawah + wadah ---------------- */
 
-const NAV: { key: Tab; label: string }[] = [
-  { key: "beranda", label: "Beranda" },
-  { key: "pesanan", label: "Pesanan" },
-  { key: "chat", label: "Chat" },
-  { key: "akun", label: "Akun" },
+const NAV: { key: Tab; label: string; icon: IconName }[] = [
+  { key: "beranda", label: "Beranda", icon: "home" },
+  { key: "pesanan", label: "Pesanan", icon: "receipt-long" },
+  { key: "chat", label: "Chat", icon: "chat-bubble-outline" },
+  { key: "akun", label: "Akun", icon: "person-outline" },
 ];
 
 function BottomNav({
@@ -901,21 +1240,42 @@ function BottomNav({
   onChange: (t: Tab) => void;
 }) {
   return (
-    <View style={styles.nav}>
-      {NAV.map((n) => (
-        <TouchableOpacity
-          key={n.key}
-          style={[styles.navBtn, tab === n.key && styles.navBtnOn]}
-          onPress={() => onChange(n.key)}
-        >
-          <Text style={tab === n.key ? styles.navTextOn : styles.navTextOff}>
-            {n.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
+    <View style={ns.bar}>
+      {NAV.map((n) => {
+        const on = tab === n.key;
+        return (
+          <TouchableOpacity
+            key={n.key}
+            style={ns.item}
+            onPress={() => onChange(n.key)}
+            accessibilityLabel={n.label}
+          >
+            <Icon name={n.icon} size={24} color={on ? C.primary : C.muted} />
+            <Text style={on ? ns.on : ns.off}>{n.label}</Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }
+
+const ns = StyleSheet.create({
+  bar: {
+    height: 68,
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: C.line,
+    shadowColor: "#0A0F1E",
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 8,
+  },
+  item: { flex: 1, alignItems: "center", justifyContent: "center", gap: 3 },
+  on: { fontFamily: F.xbold, fontSize: 11, color: C.primary },
+  off: { fontFamily: F.reg, fontSize: 11, color: C.muted },
+});
 
 export function CustomerHome({
   userId,
@@ -1003,17 +1363,18 @@ export function CustomerHome({
     );
   }
 
-  if (layanan === "info") {
-    return <InfoKampusScreen onBack={() => setLayanan(null)} />;
-  }
-  if (layanan === "ojek") {
-    return <OjekScreen userId={userId} onBack={() => setLayanan(null)} />;
-  }
-
   if (layanan === "belajar") {
     return (
       <TemanBelajarScreen userId={userId} onBack={() => setLayanan(null)} />
     );
+  }
+
+  if (layanan === "ojek") {
+    return <OjekScreen userId={userId} onBack={() => setLayanan(null)} />;
+  }
+
+  if (layanan === "info") {
+    return <InfoKampusScreen onBack={() => setLayanan(null)} />;
   }
 
   if (layanan) {
@@ -1035,8 +1396,14 @@ export function CustomerHome({
         {tab === "beranda" && (
           <Beranda
             nama={nama}
+            userId={userId}
             onPick={(key) => (key === "cari" ? setCari(true) : setLayanan(key))}
             onPromo={() => setPromoOpen(true)}
+            onDompet={() => setDompet(true)}
+            onPesanan={() => {
+              setPesananFilter("aktif");
+              setTab("pesanan");
+            }}
           />
         )}
         {tab === "pesanan" && (
@@ -1129,7 +1496,7 @@ const styles = StyleSheet.create({
     color: C.muted,
     marginTop: 24,
   },
-  promo: { backgroundColor: C.yellow, borderRadius: 16, padding: 16, gap: 4 },
+  promo: { backgroundColor: C.ink, borderRadius: 16, padding: 16, gap: 4 },
   promoTitle: { fontFamily: F.xbold, fontSize: 16, color: C.navy },
   promoText: { fontFamily: F.reg, fontSize: 13, color: C.navy },
 

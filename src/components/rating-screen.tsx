@@ -79,7 +79,7 @@ export function RatingScreen({ orderId, onDone }: { orderId: string; onDone: () 
                 key={n}
                 onPress={() => setBintang(n)}
                 accessibilityLabel={`${n} bintang`}>
-                <Text style={[styles.star, { color: n <= bintang ? C.yellow : C.border }]}>★</Text>
+                <Text style={[styles.star, { color: n <= bintang ? C.primary : C.border }]}>★</Text>
               </TouchableOpacity>
             ))}
           </View>

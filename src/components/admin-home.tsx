@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   title: { fontFamily: F.xbold, fontSize: 22, color: '#fff' },
   sub: { fontFamily: F.reg, fontSize: 13, color: '#fff', opacity: 0.9 },
-  logout: { fontFamily: F.xbold, fontSize: 14, color: C.yellow },
+  logout: { fontFamily: F.xbold, fontSize: 14, color: '#fff' },
   body: { padding: 22, gap: 8 },
   section: { fontFamily: F.xbold, fontSize: 16, color: C.navy },
   label: { fontFamily: F.semi, fontSize: 14, color: C.navy, marginTop: 4 },

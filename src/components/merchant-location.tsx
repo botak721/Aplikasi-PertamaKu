@@ -105,7 +105,7 @@ export function MerchantLocation({ userId }: { userId: string }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, gap: 12 },
-  title: { fontSize: 22, fontFamily: 'PlusJakartaSans_700Bold', color: '#0E1B5C' },
+  title: { fontSize: 22, fontFamily: 'PlusJakartaSans_700Bold', color: '#0A0F1E' },
   subtitle: { fontSize: 14, color: '#5B6785' },
   input: {
     borderWidth: 1,
@@ -113,10 +113,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 12,
     fontSize: 16,
-    color: '#0E1B5C',
+    color: '#0A0F1E',
     backgroundColor: '#FFFFFF',
   },
-  coords: { fontSize: 14, color: '#0E1B5C' },
+  coords: { fontSize: 14, color: '#0A0F1E' },
   primaryBtn: { backgroundColor: '#2547D0', padding: 14, borderRadius: 14, alignItems: 'center' },
   primaryText: { color: '#fff', fontSize: 16, fontFamily: 'PlusJakartaSans_700Bold' },
   secondaryBtn: {

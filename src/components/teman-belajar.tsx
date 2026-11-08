@@ -32,7 +32,7 @@ type Grup = {
 };
 type Tab = 'kelompok' | 'bareng' | 'saya';
 
-const WARNA = [C.primary, C.yellow, '#BFD3FF'];
+const WARNA = ['#BFD3FF', '#DDE5F7', '#C9D6F5'];
 const TABS: { key: Tab; label: string }[] = [
   { key: 'kelompok', label: 'Kelompok' },
   { key: 'bareng', label: 'Belajar bareng' },

@@ -39,9 +39,9 @@ export function TrackOrder({
   }, [open, orderId]);
 
   const markers: MapMarker[] = [];
-  if (merchant) markers.push({ id: 'm', ...merchant, label: 'Penjual', color: '#f59e0b' });
+  if (merchant) markers.push({ id: 'm', ...merchant, label: 'Penjual', color: '#5B6785' });
   if (dest) markers.push({ id: 'd', ...dest, label: 'Kamu', color: '#2547D0' });
-  if (driver) markers.push({ id: 'driver', lat: driver.lat, lng: driver.lng, label: 'Driver', color: '#0E1B5C' });
+  if (driver) markers.push({ id: 'driver', lat: driver.lat, lng: driver.lng, label: 'Driver', color: '#0A0F1E' });
 
   return (
     <View>
@@ -75,12 +75,12 @@ export function TrackOrder({
 const styles = StyleSheet.create({
   btn: {
     borderWidth: 1,
-    borderColor: '#0E1B5C',
+    borderColor: '#0A0F1E',
     padding: 10,
     borderRadius: 14,
     alignItems: 'center',
     marginTop: 10,
   },
-  btnText: { color: '#0E1B5C', fontFamily: 'PlusJakartaSans_700Bold' },
+  btnText: { color: '#0A0F1E', fontFamily: 'PlusJakartaSans_700Bold' },
   info: { fontSize: 13, color: '#5B6785', marginTop: 8 },
 });

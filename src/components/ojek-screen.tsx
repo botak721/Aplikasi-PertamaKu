@@ -160,7 +160,7 @@ export function OjekScreen({ userId, onBack }: { userId: string; onBack: () => v
 
   const markers: MapMarker[] = [];
   if (aktif && ride) {
-    markers.push({ id: 'jemput', lat: ride.jemput_lat, lng: ride.jemput_lng, label: 'Jemput', color: '#f59e0b' });
+    markers.push({ id: 'jemput', lat: ride.jemput_lat, lng: ride.jemput_lng, label: 'Jemput', color: '#5B6785' });
   } else if (coords) {
     markers.push({ id: 'me', lat: coords.lat, lng: coords.lng, label: 'Kamu', color: C.primary });
   }

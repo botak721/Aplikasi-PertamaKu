@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontFamily: "PlusJakartaSans_700Bold",
-    color: "#0E1B5C",
+    color: "#0A0F1E",
   },
   subtitle: { fontSize: 13, color: "#5B6785" },
   logout: { color: "#D92D20", fontFamily: "PlusJakartaSans_600SemiBold" },
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   tabActive: { backgroundColor: "#2547D0", borderColor: "#2547D0" },
-  tabText: { color: "#0E1B5C", fontFamily: "PlusJakartaSans_600SemiBold" },
+  tabText: { color: "#0A0F1E", fontFamily: "PlusJakartaSans_600SemiBold" },
   tabTextActive: { color: "#fff" },
   empty: { textAlign: "center", color: "#5B6785", marginTop: 24 },
   card: {
@@ -309,10 +309,10 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontFamily: "PlusJakartaSans_700Bold",
-    color: "#0E1B5C",
+    color: "#0A0F1E",
     marginBottom: 6,
   },
-  line: { fontSize: 15, color: "#0E1B5C" },
+  line: { fontSize: 15, color: "#0A0F1E" },
   meta: { fontSize: 13, color: "#5B6785", marginTop: 2 },
   total: {
     fontSize: 15,
@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
     fontFamily: "PlusJakartaSans_700Bold",
     marginTop: 10,
   },
-  sharing: { fontSize: 13, color: "#0E1B5C", marginBottom: 8 },
+  sharing: { fontSize: 13, color: "#0A0F1E", marginBottom: 8 },
   routeRow: { flexDirection: "row", gap: 8, marginTop: 10 },
   routeBtn: {
     flex: 1,

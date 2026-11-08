@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontFamily: "PlusJakartaSans_700Bold",
-    color: "#0E1B5C",
+    color: "#0A0F1E",
   },
   subtitle: { fontSize: 13, color: "#5B6785" },
   logout: { color: "#D92D20", fontFamily: "PlusJakartaSans_600SemiBold" },
@@ -177,10 +177,10 @@ const styles = StyleSheet.create({
   status: {
     fontSize: 14,
     fontFamily: "PlusJakartaSans_700Bold",
-    color: "#c60",
+    color: "#2547D0",
     marginBottom: 6,
   },
-  line: { fontSize: 15, color: "#0E1B5C" },
+  line: { fontSize: 15, color: "#0A0F1E" },
   total: {
     fontSize: 15,
     fontFamily: "PlusJakartaSans_700Bold",
